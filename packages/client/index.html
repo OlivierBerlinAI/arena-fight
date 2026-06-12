@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Precinct Duel</title>
+  </head>
+  <body>
+    <div id="app">
+      <!-- ============ Name screen ============ -->
+      <div id="screen-name" class="screen active">
+        <div class="panel center-panel">
+          <h1 class="title">PRECINCT<span class="accent">DUEL</span></h1>
+          <p class="subtitle">1v1 base assault &mdash; build robots, capture turrets, breach the core</p>
+          <div class="form-row">
+            <input
+              id="name-input"
+              data-testid="name-input"
+              type="text"
+              maxlength="24"
+              placeholder="CALLSIGN"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button id="name-submit" data-testid="name-submit" class="btn primary">ENTER</button>
+          </div>
+          <p id="name-status" class="status-line"></p>
+        </div>
+      </div>
+
+      <!-- ============ Lobby ============ -->
+      <div id="screen-lobby" class="screen" data-testid="lobby-screen">
+        <div class="panel wide-panel">
+          <div class="panel-head">
+            <h2>OPERATIONS LOBBY</h2>
+            <span id="lobby-self" class="dim"></span>
+          </div>
+          <div class="form-row">
+            <input
+              id="create-room-name"
+              type="text"
+              maxlength="32"
+              placeholder="Room name (optional)"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button id="create-room-btn" data-testid="create-room-btn" class="btn primary">CREATE ROOM</button>
+          </div>
+          <div id="room-list" data-testid="room-list" class="room-list"></div>
+          <p id="lobby-empty" class="dim center">No open rooms &mdash; create one.</p>
+        </div>
+      </div>
+
+      <!-- ============ Waiting room ============ -->
+      <div id="screen-room" class="screen" data-testid="room-screen">
+        <div class="panel center-panel">
+          <h2 id="room-title">ROOM</h2>
+          <p class="dim" id="room-preset"></p>
+          <div id="player-list" data-testid="player-list" class="player-list"></div>
+          <div class="form-row spread">
+            <button id="leave-room-btn" data-testid="leave-room-btn" class="btn">LEAVE</button>
+            <button id="ready-btn" data-testid="ready-btn" class="btn primary">READY</button>
+          </div>
+          <p id="room-status" class="status-line"></p>
+        </div>
+      </div>
+
+      <!-- ============ Game ============ -->
+      <div id="game-root" class="screen" data-testid="game-screen">
+        <div id="canvas-root"></div>
+
+        <div id="hud">
+          <!-- top bar -->
+          <div id="hud-top">
+            <div class="hud-box" id="hud-timer-box">
+              <span class="hud-label">TIME</span>
+              <span id="hud-timer" data-testid="hud-timer">00:00</span>
+            </div>
+            <div class="hud-box" id="hud-credits-box">
+              <span class="hud-label">CREDITS</span>
+              <span id="hud-credits" data-testid="hud-credits">0</span>
+            </div>
+            <div class="hud-box">
+              <span class="hud-label">UNITS</span>
+              <span id="hud-unitcap" data-testid="hud-unitcap">0/8</span>
+            </div>
+            <div class="hud-box">
+              <span class="hud-label">PING</span>
+              <span id="hud-ping" data-testid="hud-ping">--</span>
+            </div>
+          </div>
+
+          <!-- event feed -->
+          <div id="event-feed" data-testid="event-feed"></div>
+
+          <!-- bottom-left: mech status -->
+          <div id="hud-mech">
+            <div class="meter-row">
+              <span class="hud-label">HULL</span>
+              <div class="meter" id="hud-health" data-testid="hud-health">
+                <div class="meter-fill" id="hud-health-fill"></div>
+                <span class="meter-text" id="hud-health-text">100</span>
+              </div>
+            </div>
+            <div class="meter-row">
+              <span class="hud-label">HEAT</span>
+              <div class="meter" id="hud-heat" data-testid="hud-heat">
+                <div class="meter-fill heat" id="hud-heat-fill"></div>
+                <span class="meter-text" id="hud-heat-text"></span>
+              </div>
+            </div>
+            <div class="meter-row">
+              <span class="hud-label">RKT</span>
+              <div id="hud-rockets" data-testid="hud-rockets">
+                <span class="pip" data-pip="0"></span>
+                <span class="pip" data-pip="1"></span>
+                <span class="pip" data-pip="2"></span>
+                <div class="reload-bar"><div id="hud-reload-fill"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- bottom-center: build bar -->
+          <div id="build-bar" data-testid="build-bar">
+            <button id="build-hovertank" data-testid="build-hovertank" class="build-btn">
+              <span class="build-key">1</span>
+              <span class="build-name">HOVERTANK</span>
+              <span class="build-info" id="build-hovertank-info"></span>
+            </button>
+            <button id="build-dreadnought" data-testid="build-dreadnought" class="build-btn">
+              <span class="build-key">2</span>
+              <span class="build-name">DREADNOUGHT</span>
+              <span class="build-info" id="build-dreadnought-info"></span>
+            </button>
+            <div id="build-queue" data-testid="build-queue"></div>
+          </div>
+
+          <!-- bottom-right: minimap -->
+          <canvas id="minimap" data-testid="minimap" width="200" height="200"></canvas>
+
+          <!-- debug overlay -->
+          <pre id="debug-overlay"></pre>
+        </div>
+      </div>
+
+      <!-- ============ Result ============ -->
+      <div id="screen-result" class="overlay" data-testid="result-screen">
+        <div class="panel center-panel">
+          <h1 id="result-title" data-testid="result-title" class="title">VICTORY</h1>
+          <p id="result-reason" class="subtitle"></p>
+          <p id="result-duration" class="dim"></p>
+          <table id="result-stats" data-testid="result-stats" class="stats-table"></table>
+          <div class="form-row spread">
+            <button id="back-to-lobby-btn" data-testid="back-to-lobby-btn" class="btn">BACK TO LOBBY</button>
+            <button id="rematch-btn" data-testid="rematch-btn" class="btn primary">READY FOR REMATCH</button>
+          </div>
+          <p id="result-status" class="status-line"></p>
+        </div>
+      </div>
+
+      <!-- ============ Countdown ============ -->
+      <div id="countdown-overlay" class="overlay" data-testid="countdown-overlay">
+        <div id="countdown-number">3</div>
+        <div class="dim">MATCH STARTING</div>
+      </div>
+
+      <!-- ============ Error banner ============ -->
+      <div id="error-banner" data-testid="error-banner"></div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
