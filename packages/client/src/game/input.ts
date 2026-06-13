@@ -13,6 +13,10 @@ const TRANSFORM_CODE = 'KeyF';
 export interface InputCallbacks {
   onBuild: (unit: UnitType) => void;
   onToggleDebug: () => void;
+  /** fired when the player toggles locomotion mode (for immediate SFX) */
+  onTransform: (mode: MechMode) => void;
+  /** fired when the player presses the mute key */
+  onToggleMute: () => void;
   sendInput: (input: PlayerInput) => void;
 }
 
@@ -41,7 +45,10 @@ export class InputManager {
     if (e.repeat) return;
     if (e.code === 'Digit1') this.cb.onBuild('hovertank');
     else if (e.code === 'Digit2') this.cb.onBuild('dreadnought');
-    else if (e.code === TRANSFORM_CODE) this.mode = this.mode === 'walker' ? 'hover' : 'walker';
+    else if (e.code === TRANSFORM_CODE) {
+      this.mode = this.mode === 'walker' ? 'hover' : 'walker';
+      this.cb.onTransform(this.mode);
+    } else if (e.code === 'KeyM') this.cb.onToggleMute();
     else this.keys.add(e.code);
   };
   private readonly onKeyUp = (e: KeyboardEvent): void => {

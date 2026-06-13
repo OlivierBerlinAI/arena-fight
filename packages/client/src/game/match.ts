@@ -23,6 +23,7 @@ import { ChaseCamera } from './camera';
 import { Hud } from './hud';
 import { Minimap } from './minimap';
 import { DebugOverlay } from './debug';
+import { SoundEngine } from './audio';
 import { byId } from '../dom';
 
 export interface MatchConfig {
@@ -50,9 +51,13 @@ export class MatchController {
   private disposed = false;
   private ended = false;
 
+  private readonly audioBtn = byId<HTMLButtonElement>('hud-audio');
+  private readonly onAudioClick = (): void => this.toggleMute();
+
   constructor(
     private readonly net: Net,
-    readonly cfg: MatchConfig
+    readonly cfg: MatchConfig,
+    private readonly sound: SoundEngine
   ) {
     this.balance = getBalance(cfg.preset);
     this.buffer = new SnapshotBuffer(cfg.tickMs);
@@ -68,9 +73,14 @@ export class MatchController {
     this.input = new InputManager(this.renderer.canvas, this.renderer.camera, {
       onBuild: sendBuild,
       onToggleDebug: () => this.debug.toggle(),
+      onTransform: (mode) => this.sound.transform(mode === 'hover'),
+      onToggleMute: () => this.toggleMute(),
       sendInput: (input) => this.net.send({ type: 'input', ...input }),
     });
     this.input.setPlaying(true);
+
+    this.audioBtn.addEventListener('click', this.onAudioClick);
+    this.updateAudioButton();
 
     gameHook.playerIndex = cfg.playerIndex;
     gameHook.winner = null;
@@ -91,6 +101,8 @@ export class MatchController {
     this.buffer.push(snap, now);
     this.entities.onRawSnapshot(snap, events);
     this.hud.addEvents(events);
+    this.sound.onMatchEvents(events, this.cfg.playerIndex);
+    this.sound.onProjectiles(snap.projectiles);
 
     // test hook (serialized fresh from this snapshot)
     gameHook.tick = snap.tick;
@@ -164,10 +176,23 @@ export class MatchController {
     this.renderer.render();
   }
 
+  private toggleMute(): void {
+    this.sound.toggleMuted();
+    this.updateAudioButton();
+  }
+
+  private updateAudioButton(): void {
+    const muted = this.sound.isMuted;
+    this.audioBtn.textContent = muted ? '♪̸' : '♪';
+    this.audioBtn.classList.toggle('muted', muted);
+    this.audioBtn.title = muted ? 'Sound off (M)' : 'Sound on (M)';
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     cancelAnimationFrame(this.raf);
+    this.audioBtn.removeEventListener('click', this.onAudioClick);
     this.input.dispose();
     this.hud.dispose();
     this.entities.dispose();

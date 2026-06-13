@@ -15,6 +15,7 @@ import { LobbyScreen } from './screens/lobby';
 import { RoomScreen } from './screens/room';
 import { ResultScreen } from './screens/result';
 import { MatchController } from './game/match';
+import { SoundEngine } from './game/audio';
 
 installGameHook();
 
@@ -27,6 +28,7 @@ const SCREEN_IDS: Record<string, string> = {
 
 class App {
   private net = new Net();
+  private readonly sound = new SoundEngine();
   private phase: UiPhase = 'name';
   private match: MatchController | null = null;
   private playerIndex: PlayerIndex = 0;
@@ -39,23 +41,35 @@ class App {
   private readonly nameScreen = new NameScreen((name) => this.handleNameSubmit(name));
   private readonly lobbyScreen = new LobbyScreen(
     (roomName) => {
+      this.sound.uiClick();
       this.net.send({ type: 'createRoom', roomName, preset: isTestMode() ? 'test' : undefined });
     },
-    (roomId) => this.net.send({ type: 'joinRoom', roomId })
+    (roomId) => {
+      this.sound.uiClick();
+      this.net.send({ type: 'joinRoom', roomId });
+    }
   );
   private readonly roomScreen = new RoomScreen(
-    (ready) => this.net.send({ type: 'ready', ready }),
+    (ready) => {
+      this.sound.uiClick();
+      this.net.send({ type: 'ready', ready });
+    },
     () => {
+      this.sound.uiClick();
       this.net.send({ type: 'leaveRoom' });
       this.toLobby();
     }
   );
   private readonly resultScreen = new ResultScreen(
     () => {
+      this.sound.uiClick();
       this.net.send({ type: 'leaveRoom' });
       this.toLobby();
     },
-    () => this.net.send({ type: 'ready', ready: true })
+    () => {
+      this.sound.uiClick();
+      this.net.send({ type: 'ready', ready: true });
+    }
   );
 
   private readonly countdownOverlay = byId('countdown-overlay');
@@ -173,6 +187,7 @@ class App {
 
       case 'countdown':
         this.countdownNumber.textContent = String(msg.seconds);
+        this.sound.countdownTick(msg.seconds);
         if (this.phase !== 'countdown') this.setPhase('countdown');
         break;
 
@@ -182,14 +197,20 @@ class App {
         this.playerIndex = msg.playerIndex;
         this.tickRate = msg.tickRate;
         this.setPhase('playing');
+        this.sound.resume();
+        this.sound.matchStart();
         try {
-          this.match = new MatchController(this.net, {
-            seed: msg.seed,
-            playerIndex: msg.playerIndex,
-            preset: msg.preset,
-            tickRate: msg.tickRate,
-            tickMs: msg.tickMs,
-          });
+          this.match = new MatchController(
+            this.net,
+            {
+              seed: msg.seed,
+              playerIndex: msg.playerIndex,
+              preset: msg.preset,
+              tickRate: msg.tickRate,
+              tickMs: msg.tickMs,
+            },
+            this.sound
+          );
         } catch (err) {
           // e.g. WebGL unavailable — fail loudly instead of a dead screen
           console.error('[client] failed to start match renderer', err);
@@ -205,6 +226,8 @@ class App {
 
       case 'matchEnd':
         this.match?.onMatchEnd(msg.winner);
+        if (msg.winner === this.playerIndex) this.sound.victory();
+        else this.sound.defeat();
         gameHook.winner = msg.winner;
         this.resultScreen.show(
           {

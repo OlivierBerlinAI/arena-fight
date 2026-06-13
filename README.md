@@ -38,7 +38,14 @@ different game server explicitly, use `http://<host-ip>:5273/?server=<ip>:8080`.
 | `F` | Transform **Walker ⇄ Hover**. Hover glides faster with low drag, but trades rockets for the laser |
 | `1` | Build **Hovertank** (50¢, 5 s) — fast, fragile lane robot |
 | `2` | Build **Dreadnought** (200¢, 15 s) — slow, 400 HP, splash cannon |
+| `M` | Mute / unmute sound (also the ♪ button in the HUD top bar) |
 | `F3` | Debug overlay (fps, ping, ticks, snapshot age, entity counts) |
+
+- **Sound:** all audio is synthesised procedurally at runtime (retro 8-bit /
+  chiptune — NES-style pulse waves plus a filtered noise channel), so there are
+  no asset files. Weapons, explosions, the transform, turret captures, build
+  feedback, the base-attack klaxon, the countdown and the victory/defeat
+  jingles all have their own sounds.
 
 - **Economy:** +1 credit/s passively, +1 credit/s per owned turret. You start
   with 100 credits. Build queue holds 3; at most 8 of your robots alive at once.
