@@ -78,8 +78,10 @@ e2e               Playwright end-to-end tests (two browser contexts)
 The server is authoritative: clients only send inputs and build commands;
 every message is validated (`parseClientMessage`) and every build command is
 re-checked against credits/queue/cap inside the simulation. State snapshots
-broadcast every other tick (≈50 Hz at the default 100 Hz tick rate); clients
-render ~100 ms in the past, interpolating between snapshots.
+broadcast every other tick (≈50 Hz at the default 100 Hz tick rate). Remote
+entities are interpolated a short, jitter-adaptive delay (~55–140 ms) in the
+past; the local player's own mech is client-side predicted (re-derived from the
+freshest snapshot each frame) so steering feels immediate.
 
 ## Testing
 

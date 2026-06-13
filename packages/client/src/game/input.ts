@@ -15,7 +15,7 @@
  */
 import type { MechMode, PlayerInput, UnitType, Vec2 } from '@precinct/shared';
 
-const SEND_INTERVAL_MS = 1000 / 30;
+const SEND_INTERVAL_MS = 1000 / 60;
 /** key that toggles walker ⇄ hover */
 const TRANSFORM_CODE = 'KeyF';
 
@@ -98,6 +98,11 @@ export class InputManager {
   setPlaying(playing: boolean): void {
     this.playing = playing;
     if (!playing) this.onBlur();
+  }
+
+  /** Local facing heading (rad) — the exact yaw the server will derive from aim. */
+  get heading(): number {
+    return this.facingYaw;
   }
 
   /**

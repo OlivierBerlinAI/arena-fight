@@ -1,13 +1,21 @@
 /**
- * Snapshot ring buffer + interpolation. Entities are rendered ~100 ms in the
+ * Snapshot ring buffer + interpolation. Entities are rendered slightly in the
  * past: renderTick trails the freshest snapshot so there is (nearly) always a
  * pair of snapshots to interpolate between. Entities present in only one of
  * the two bracketing snapshots snap to that snapshot.
+ *
+ * The render delay is adaptive: it sits near MIN on a clean link for snappy
+ * remote motion and grows automatically when snapshot arrivals get bursty, so a
+ * network hiccup does not starve the interpolator. The local player's own mech
+ * bypasses this buffer entirely via client-side prediction (see prediction.ts).
  */
 import type { MechSnap, ProjectileSnap, Snapshot, TurretSnap, UnitSnap } from '@precinct/shared';
 
-export const RENDER_DELAY_MS = 100;
+export const MIN_RENDER_DELAY_MS = 55;
+export const MAX_RENDER_DELAY_MS = 140;
 const MAX_BUFFER = 90;
+/** how many recent snapshot inter-arrival gaps drive the jitter estimate */
+const JITTER_WINDOW = 24;
 
 export interface ViewState {
   /** fractional tick the view corresponds to */
@@ -36,10 +44,14 @@ function lerpAngle(a: number, b: number, t: number): number {
 
 export class SnapshotBuffer {
   private readonly buf: BufferedSnap[] = [];
-  private readonly delayTicks: number;
+  private delayMs = MIN_RENDER_DELAY_MS;
+  private readonly gaps: number[] = [];
 
-  constructor(private readonly tickMs: number) {
-    this.delayTicks = RENDER_DELAY_MS / Math.max(1, tickMs);
+  constructor(private readonly tickMs: number) {}
+
+  /** current adaptive render delay, in ms (for the debug overlay) */
+  get renderDelayMs(): number {
+    return this.delayMs;
   }
 
   get latest(): Snapshot | null {
@@ -58,9 +70,27 @@ export class SnapshotBuffer {
 
   push(snap: Snapshot, nowMs: number): void {
     const last = this.buf[this.buf.length - 1];
+    if (last) this.trackJitter(nowMs - last.arrivedAt);
     if (last && snap.tick <= last.snap.tick) return; // ignore stale/duplicate
     this.buf.push({ snap, arrivedAt: nowMs });
     if (this.buf.length > MAX_BUFFER) this.buf.splice(0, this.buf.length - MAX_BUFFER);
+  }
+
+  /**
+   * Drive the render delay from the worst recent snapshot inter-arrival gap.
+   * Grow immediately on a hiccup (avoid starving the interpolator), shrink back
+   * slowly when the link calms down — clamped to [MIN, MAX].
+   */
+  private trackJitter(gapMs: number): void {
+    this.gaps.push(gapMs);
+    if (this.gaps.length > JITTER_WINDOW) this.gaps.shift();
+    let worst = 0;
+    for (const g of this.gaps) if (g > worst) worst = g;
+    const target = Math.min(
+      MAX_RENDER_DELAY_MS,
+      Math.max(MIN_RENDER_DELAY_MS, worst * 1.4 + this.tickMs)
+    );
+    this.delayMs = target > this.delayMs ? target : this.delayMs + (target - this.delayMs) * 0.03;
   }
 
   /** The fractional tick the renderer should show right now. */
@@ -69,7 +99,7 @@ export class SnapshotBuffer {
     const newest = this.buf[this.buf.length - 1];
     // Estimate the server's current tick from arrival time, then step back.
     const serverTickEstimate = newest.snap.tick + (nowMs - newest.arrivedAt) / this.tickMs;
-    const rt = serverTickEstimate - this.delayTicks;
+    const rt = serverTickEstimate - this.delayMs / Math.max(1, this.tickMs);
     const oldest = this.buf[0].snap.tick;
     return Math.min(Math.max(rt, oldest), newest.snap.tick);
   }
