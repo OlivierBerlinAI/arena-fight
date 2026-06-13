@@ -101,10 +101,10 @@ const GAME_CHORDS: Chord[] = [
 const GAME_ARP = GAME_CHORDS.map((c) => arp16(c.triad));
 /** Heroic lead, one note per beat (16 across the loop), all chord tones. */
 const GAME_LEAD = [
-  'A4', 'E5', 'C5', 'E5',
-  'F5', 'C5', 'A4', 'C5',
-  'G5', 'D5', 'B4', 'D5',
-  'E5', 'B4', 'G#4', 'B4',
+  'A3', 'E4', 'C4', 'E4',
+  'F4', 'C4', 'A3', 'C4',
+  'G4', 'D4', 'B3', 'D4',
+  'E4', 'B3', 'G#3', 'B3',
 ].map(hz);
 
 export class SoundEngine {
