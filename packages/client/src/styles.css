@@ -691,3 +691,221 @@ kbd {
   font-size: 12px;
   color: var(--text);
 }
+
+/* ---------- control-scheme toggle (start screen + controls overlay) ---------- */
+.control-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 16px 0 4px;
+}
+.control-toggle-label {
+  color: var(--dim);
+  font-size: 11px;
+  letter-spacing: 2px;
+}
+.control-toggle .seg {
+  background: #0b1320;
+  border: 1px solid var(--line-bright);
+  color: var(--dim);
+  font: inherit;
+  font-size: 12px;
+  letter-spacing: 1px;
+  padding: 8px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition:
+    background 0.12s,
+    color 0.12s,
+    border-color 0.12s;
+}
+.control-toggle .seg:hover {
+  border-color: var(--cyan);
+  color: var(--text);
+}
+.control-toggle .seg.active {
+  color: var(--cyan);
+  border-color: var(--cyan);
+  background: rgba(34, 211, 238, 0.14);
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.22);
+}
+
+/* The controls overlay shows whichever scheme's help matches the active mode. */
+.touch-only {
+  display: none;
+}
+body.touch-active .kb-only {
+  display: none;
+}
+body.touch-active table.touch-only {
+  display: table;
+}
+
+/* ---------- on-screen touch controls ---------- */
+#game-root {
+  touch-action: none; /* the joystick/buttons own all gestures over the play area */
+}
+#touch-controls {
+  position: absolute;
+  inset: 0;
+  z-index: 5; /* above the canvas, below the pointer-through HUD (z 10) */
+  pointer-events: none;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* left thumb: a floating joystick that stops short of the centred build bar */
+#touch-stick-zone {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: calc(50vw - 130px);
+  height: 62vh;
+  pointer-events: auto;
+  touch-action: none;
+}
+#touch-stick-base {
+  position: fixed;
+  width: 132px;
+  height: 132px;
+  border-radius: 50%;
+  border: 2px solid rgba(34, 211, 238, 0.5);
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.1), rgba(8, 12, 18, 0.4));
+  transform: translate(-50%, -50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s;
+}
+#touch-stick-base.active {
+  opacity: 1;
+}
+#touch-stick-knob {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 1px solid var(--cyan);
+  background: rgba(34, 211, 238, 0.35);
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.5);
+  transform: translate(-50%, -50%);
+}
+
+/* right thumb: fire / rockets / transform */
+#touch-actions {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  pointer-events: none;
+}
+.touch-btn {
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 2px solid var(--line-bright);
+  background: rgba(13, 19, 29, 0.82);
+  color: var(--text);
+  font-family: inherit;
+  letter-spacing: 1px;
+  cursor: pointer;
+  user-select: none;
+}
+.touch-btn.pressed {
+  transform: scale(0.93);
+}
+#touch-fire {
+  width: 100px;
+  height: 100px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--cyan);
+  border-color: var(--cyan);
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.25);
+}
+#touch-fire.pressed {
+  background: rgba(34, 211, 238, 0.3);
+}
+#touch-alt {
+  width: 72px;
+  height: 72px;
+  font-size: 13px;
+  color: var(--yellow);
+  border-color: rgba(250, 204, 21, 0.7);
+}
+#touch-alt.pressed {
+  background: rgba(250, 204, 21, 0.25);
+}
+#touch-alt.locked {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+#touch-mode {
+  width: 62px;
+  height: 62px;
+  font-size: 24px;
+}
+
+/* ---------- touch-mode HUD layout (rearranged for thumbs) ---------- */
+body.touch-active #minimap {
+  top: 12px;
+  right: 12px;
+  bottom: auto;
+  width: 112px;
+  height: 112px;
+}
+body.touch-active .controls-btn {
+  top: 134px; /* below the relocated minimap */
+  right: 12px;
+}
+body.touch-active #hud-mech {
+  top: 52px;
+  left: 12px;
+  bottom: auto;
+  width: 220px;
+}
+body.touch-active #build-bar {
+  gap: 6px;
+}
+body.touch-active .build-btn {
+  width: 104px;
+  padding: 6px 4px;
+}
+/* keyboard affordances are meaningless under touch */
+body.touch-active .build-key,
+body.touch-active .mode-hint {
+  display: none;
+}
+
+/* The bottom-corner controls need landscape; nudge portrait players to rotate. */
+#rotate-hint {
+  display: none;
+}
+@media (orientation: portrait) {
+  body.touch-active #rotate-hint {
+    display: flex;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 32px;
+    background: rgba(5, 8, 12, 0.94);
+    color: var(--text);
+    font-size: 16px;
+    letter-spacing: 1px;
+    line-height: 1.6;
+  }
+}

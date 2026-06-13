@@ -1,19 +1,28 @@
 /**
- * Keyboard-only controls (the mouse is intentionally unused for gameplay):
- *   W / S  drive forward / reverse along the facing direction
- *   A / D  rotate the mech left / right (this also turns the chase camera)
- *   M      primary fire (gatling as a walker, laser while hovering)
- *   N      secondary fire (rockets — walker only)
- *   F      transform walker ⇄ hover
- *   1 / 2  build hovertank / dreadnought
- *   F3     debug overlay
+ * Player controls. Two interchangeable schemes feed one shared input model:
  *
- * Movement and facing are converted to the existing wire input: `mx,mz` is the
- * thrust vector along the facing heading and `aimX,aimZ` is a point far ahead
- * on that heading, so the authoritative simulation (unchanged) sets the mech's
- * yaw to the heading and fires along it.
+ *   keyboard (desktop, default):
+ *     W / S  drive forward / reverse along the facing direction
+ *     A / D  rotate the mech left / right (this also turns the chase camera)
+ *     M      primary fire (gatling as a walker, laser while hovering)
+ *     N      secondary fire (rockets — walker only)
+ *     F      transform walker ⇄ hover
+ *     1 / 2  build hovertank / dreadnought
+ *     F3     debug overlay
+ *
+ *   touch (phone/tablet): an on-screen joystick + buttons (see ./touch.ts).
+ *     The joystick's vector maps to the SAME throttle/turn axes the keys drive.
+ *
+ * Both schemes can be active at once (a tablet with a keyboard), and the scheme
+ * can be switched live via `setScheme`. Movement and facing are converted to the
+ * existing wire input: `mx,mz` is the thrust vector along the facing heading and
+ * `aimX,aimZ` is a point far ahead on that heading, so the authoritative
+ * simulation (unchanged) sets the mech's yaw to the heading and fires along it.
  */
 import type { MechMode, PlayerInput, UnitType, Vec2 } from '@precinct/shared';
+import type { ControlScheme } from '../controls';
+import { byId } from '../dom';
+import { TouchControls } from './touch';
 
 const SEND_INTERVAL_MS = 1000 / 30;
 /** key that toggles walker ⇄ hover */
@@ -41,6 +50,8 @@ const REVERSE_THROTTLE = 0.65;
 /** how far ahead to project the aim point along the heading */
 const AIM_REACH = 40;
 
+const clamp1 = (v: number): number => Math.max(-1, Math.min(1, v));
+
 export interface InputCallbacks {
   onBuild: (unit: UnitType) => void;
   onToggleDebug: () => void;
@@ -54,6 +65,8 @@ export class InputManager {
   private mode: MechMode = 'walker';
   private sendTimer: number | null = null;
   private playing = false;
+  /** on-screen controls — created only while the touch scheme is active */
+  private touch: TouchControls | null = null;
 
   /** client-side facing heading (radians); the camera and aim both follow it */
   private facingYaw = 0;
@@ -72,10 +85,8 @@ export class InputManager {
     if (e.repeat) return;
     if (e.code === 'Digit1') this.cb.onBuild('hovertank');
     else if (e.code === 'Digit2') this.cb.onBuild('dreadnought');
-    else if (e.code === TRANSFORM_CODE) {
-      this.mode = this.mode === 'walker' ? 'hover' : 'walker';
-      this.cb.onTransform(this.mode);
-    } else this.keys.add(e.code);
+    else if (e.code === TRANSFORM_CODE) this.toggleMode();
+    else this.keys.add(e.code);
   };
   private readonly onKeyUp = (e: KeyboardEvent): void => {
     this.keys.delete(e.code);
@@ -84,10 +95,14 @@ export class InputManager {
     this.keys.clear();
   };
 
-  constructor(private readonly cb: InputCallbacks) {
+  constructor(
+    private readonly cb: InputCallbacks,
+    scheme: ControlScheme
+  ) {
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.onBlur);
+    this.setScheme(scheme);
 
     this.sendTimer = window.setInterval(() => {
       if (!this.playing) return;
@@ -95,13 +110,34 @@ export class InputManager {
     }, SEND_INTERVAL_MS);
   }
 
+  /** Toggle locomotion mode — shared by the F key and the touch transform button. */
+  toggleMode(): void {
+    this.mode = this.mode === 'walker' ? 'hover' : 'walker';
+    this.touch?.setMode(this.mode);
+    this.cb.onTransform(this.mode);
+  }
+
+  /** Show or hide the on-screen controls; the keyboard stays live either way. */
+  setScheme(scheme: ControlScheme): void {
+    if (scheme === 'touch' && !this.touch) {
+      this.touch = new TouchControls({ onTransform: () => this.toggleMode() }, byId('game-root'));
+      this.touch.setMode(this.mode);
+    } else if (scheme === 'keyboard' && this.touch) {
+      this.touch.dispose();
+      this.touch = null;
+    }
+  }
+
   setPlaying(playing: boolean): void {
     this.playing = playing;
-    if (!playing) this.onBlur();
+    if (!playing) {
+      this.onBlur();
+      this.touch?.reset();
+    }
   }
 
   /**
-   * Per-frame: integrate the facing heading from the turn keys and project the
+   * Per-frame: integrate the facing heading from the turn axis and project the
    * aim point ahead of the mech. While dead, the heading resyncs to the mech's
    * (respawn) yaw so the player starts facing the right way again.
    */
@@ -111,7 +147,7 @@ export class InputManager {
       this.angularVel = 0;
       this.facingInit = true;
     } else {
-      const turn = (this.keys.has('KeyD') ? 1 : 0) - (this.keys.has('KeyA') ? 1 : 0);
+      const turn = this.turnAxis();
       const t = TURN[this.mode];
       // Analytic (frame-rate-independent) approach to the steady-state rate:
       //   dω/dt = turn·accel − friction·ω  ⇒  ω(t+dt) = ω∞ + (ω − ω∞)·e^(−friction·dt)
@@ -125,11 +161,27 @@ export class InputManager {
     this.aimPoint = { x: mech.x + dx * AIM_REACH, z: mech.z + dz * AIM_REACH };
   }
 
+  /** Steering, -1 (left) .. 1 (right): D/A keys plus the joystick's x. */
+  private turnAxis(): number {
+    const kb = (this.keys.has('KeyD') ? 1 : 0) - (this.keys.has('KeyA') ? 1 : 0);
+    return clamp1(kb + (this.touch?.vector.x ?? 0));
+  }
+
+  /** Throttle, -reverse .. 1: W/S keys plus the joystick's forward (up) push. */
+  private throttleAxis(): number {
+    const kb = (this.keys.has('KeyW') ? 1 : 0) - (this.keys.has('KeyS') ? REVERSE_THROTTLE : 0);
+    let stick = 0;
+    if (this.touch) {
+      const forward = -this.touch.vector.y; // joystick up = forward
+      stick = forward >= 0 ? forward : forward * REVERSE_THROTTLE;
+    }
+    return clamp1(kb + stick);
+  }
+
   currentInput(): PlayerInput {
     const dx = Math.cos(this.facingYaw);
     const dz = Math.sin(this.facingYaw);
-    const throttle =
-      (this.keys.has('KeyW') ? 1 : 0) - (this.keys.has('KeyS') ? REVERSE_THROTTLE : 0);
+    const throttle = this.throttleAxis();
     const mx = dx * throttle;
     const mz = dz * throttle;
 
@@ -139,8 +191,8 @@ export class InputManager {
       mz,
       aimX: aim.x,
       aimZ: aim.z,
-      fire: this.keys.has('KeyM'),
-      alt: this.keys.has('KeyN'),
+      fire: this.keys.has('KeyM') || (this.touch?.firePressed ?? false),
+      alt: this.keys.has('KeyN') || (this.touch?.altPressed ?? false),
       mode: this.mode,
     };
   }
@@ -150,5 +202,7 @@ export class InputManager {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
+    this.touch?.dispose();
+    this.touch = null;
   }
 }

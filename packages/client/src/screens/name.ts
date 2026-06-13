@@ -1,4 +1,5 @@
 import { byId } from '../dom';
+import { ControlSchemeToggle } from '../controls';
 
 const NAME_KEY = 'precinct-duel-name';
 
@@ -6,6 +7,8 @@ export class NameScreen {
   private readonly input = byId<HTMLInputElement>('name-input');
   private readonly submit = byId<HTMLButtonElement>('name-submit');
   private readonly status = byId('name-status');
+  // Choose keyboard vs. touch up front; persisted and shared with the in-game toggle.
+  private readonly controls = new ControlSchemeToggle(byId('name-control-toggle'));
 
   constructor(onSubmit: (name: string) => void) {
     // sessionStorage is per-tab, so two tabs can use different names.
