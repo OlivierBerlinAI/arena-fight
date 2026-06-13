@@ -18,8 +18,24 @@ import type { MechMode, PlayerInput, UnitType, Vec2 } from '@precinct/shared';
 const SEND_INTERVAL_MS = 1000 / 30;
 /** key that toggles walker ⇄ hover */
 const TRANSFORM_CODE = 'KeyF';
-/** turn speed in radians per second */
-const TURN_RATE = 3.0;
+
+/**
+ * Turning uses an angular-velocity model so each mode has its own feel:
+ *  - walker: high drag → snappy, direct steering, but a lower top turn rate
+ *  - hover:  low drag + strong angular thrust → the turn accelerates in and
+ *            glides out, mirroring the hover forward acceleration/coast
+ *
+ * `accel/friction` is the target (steady-state) turn rate it accelerates
+ * toward; `friction` sets how fast it gets there and coasts back; `max` clamps
+ * the rate. Both targets sit well above `max`, so the cap — not the integrator
+ * step — bounds the rate, which keeps the feel identical at any frame rate
+ * (the integrator below is the analytic, frame-rate-independent solution).
+ */
+const TURN = {
+  walker: { accel: 42, friction: 14, max: 2.2 },
+  hover: { accel: 14, friction: 2.6, max: 3.2 },
+} as const;
+
 /** reverse is a little slower than forward */
 const REVERSE_THROTTLE = 0.65;
 /** how far ahead to project the aim point along the heading */
@@ -41,6 +57,8 @@ export class InputManager {
 
   /** client-side facing heading (radians); the camera and aim both follow it */
   private facingYaw = 0;
+  /** angular velocity (rad/s), integrated with mode-dependent accel/drag */
+  private angularVel = 0;
   private facingInit = false;
   /** world-space point ahead of the mech on the current heading */
   aimPoint: Vec2 | null = null;
@@ -90,10 +108,17 @@ export class InputManager {
   update(mech: { x: number; z: number; yaw: number; alive: boolean }, dt: number): void {
     if (!this.facingInit || !mech.alive) {
       this.facingYaw = mech.yaw;
+      this.angularVel = 0;
       this.facingInit = true;
     } else {
       const turn = (this.keys.has('KeyD') ? 1 : 0) - (this.keys.has('KeyA') ? 1 : 0);
-      this.facingYaw += turn * TURN_RATE * dt;
+      const t = TURN[this.mode];
+      // Analytic (frame-rate-independent) approach to the steady-state rate:
+      //   dω/dt = turn·accel − friction·ω  ⇒  ω(t+dt) = ω∞ + (ω − ω∞)·e^(−friction·dt)
+      const target = (turn * t.accel) / t.friction;
+      this.angularVel = target + (this.angularVel - target) * Math.exp(-t.friction * dt);
+      this.angularVel = Math.max(-t.max, Math.min(t.max, this.angularVel));
+      this.facingYaw += this.angularVel * dt;
     }
     const dx = Math.cos(this.facingYaw);
     const dz = Math.sin(this.facingYaw);

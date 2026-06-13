@@ -176,6 +176,9 @@ function std(color: number, opts: { emissive?: number; ei?: number; rough?: numb
 const STRIDE_RATE = 0.9;
 /** peak fore/aft leg swing (radians) at full walking speed */
 const SWING_AMP = 0.55;
+/** how much turning (rad/s) counts toward the walk gait, so the legs also step
+ *  while the walker rotates in place */
+const TURN_GAIT = 3.0;
 
 interface MechView {
   group: THREE.Group;
@@ -189,6 +192,10 @@ interface MechView {
   stridePhase: number;
   /** 0 = walker, 1 = hover; lerps for a smooth transform */
   hoverBlend: number;
+  /** previous rendered yaw, for deriving the visual turn rate */
+  prevYaw: number;
+  /** false until prevYaw has been seeded (also reset on death) */
+  poseInit: boolean;
 }
 
 /** Low-poly mech: two animated legs, torso, twin gun arms, team accents. */
@@ -288,6 +295,8 @@ function buildMech(owner: PlayerIndex): MechView {
     bobPhase: owner * 1.7,
     stridePhase: 0,
     hoverBlend: 0,
+    prevYaw: 0,
+    poseInit: false,
   };
 }
 
@@ -416,34 +425,46 @@ export class EntityManager {
         // correct mode (no one-frame hover-pose pop when respawning).
         view.hoverBlend = m.mode === 'hover' ? 1 : 0;
         view.stridePhase = 0;
+        view.poseInit = false;
         continue;
       }
 
       const speed = Math.hypot(m.vx, m.vz);
-      const speedFrac = Math.min(1, speed / walkerMax);
+
+      // Visual turn rate (rad/s) from the change in rendered yaw.
+      if (!view.poseInit) {
+        view.prevYaw = m.yaw;
+        view.poseInit = true;
+      }
+      let yawDelta = m.yaw - view.prevYaw;
+      yawDelta = Math.atan2(Math.sin(yawDelta), Math.cos(yawDelta));
+      view.prevYaw = m.yaw;
+      const yawRate = dt > 1e-4 ? Math.abs(yawDelta) / dt : 0;
+
+      // Gait drives the walk cycle from BOTH moving and turning in place.
+      const gait = speed + yawRate * TURN_GAIT;
+      const gaitFrac = Math.min(1, gait / walkerMax);
 
       // Smoothly blend between walker (0) and hover (1) for the transform.
       const target = m.mode === 'hover' ? 1 : 0;
       view.hoverBlend += (target - view.hoverBlend) * Math.min(1, dt * 8);
       const hb = view.hoverBlend;
 
-      // Walk cycle: advance the stride by ground speed; legs swing in antiphase.
-      view.stridePhase = (view.stridePhase + speed * dt * STRIDE_RATE) % (Math.PI * 2);
-      const swing = Math.sin(view.stridePhase) * SWING_AMP * speedFrac;
+      // Walk cycle: advance the stride by the gait; legs swing in antiphase.
+      view.stridePhase = (view.stridePhase + gait * dt * STRIDE_RATE) % (Math.PI * 2);
+      const swing = Math.sin(view.stridePhase) * SWING_AMP * gaitFrac;
       for (let i = 0; i < 2; i++) {
-        const side = i === 0 ? -1 : 1;
         const walkZ = i === 0 ? swing : -swing;
-        const hoverZ = -0.6; // feet trail back when airborne
-        const hoverX = side * 0.5; // legs splay out like landing gear
+        const hoverZ = -1.5; // legs fold fully back, tucked together, while hovering
         view.legs[i].rotation.z = walkZ * (1 - hb) + hoverZ * hb;
-        view.legs[i].rotation.x = hoverX * hb;
+        view.legs[i].rotation.x = 0;
       }
 
-      // Body height: grounded step-bob (walker) ↔ floaty hover.
+      // Body height: grounded step-bob (walker) ↔ hover hugs the ground LOWER.
       const idleBob = Math.sin(timeSec * 3.1 + view.bobPhase) * 0.09;
-      const stepBob = Math.abs(Math.sin(view.stridePhase)) * 0.06 * speedFrac;
+      const stepBob = Math.abs(Math.sin(view.stridePhase)) * 0.06 * gaitFrac;
       const walkerY = 0.25 + stepBob + idleBob * 0.4;
-      const hoverY = 0.95 + idleBob;
+      const hoverY = -0.15 + idleBob * 0.5;
       const groupY = walkerY * (1 - hb) + hoverY * hb;
       view.group.position.set(m.x, groupY, m.z);
       view.group.rotation.y = -m.yaw;
