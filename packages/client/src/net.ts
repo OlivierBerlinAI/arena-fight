@@ -10,9 +10,13 @@ const PING_INTERVAL_MS = 2000;
 export function serverUrl(): string {
   const params = new URLSearchParams(location.search);
   const override = params.get('server');
-  if (override) return `ws://${override}`;
-  const host = location.hostname || 'localhost';
-  return `ws://${host}:8080`;
+  if (override) return /^wss?:\/\//i.test(override) ? override : `ws://${override}`;
+  // Vite dev server (npm run dev) talks directly to the standalone server.
+  if (location.port === '5273') return `ws://${location.hostname || 'localhost'}:8080`;
+  // Production / containerized: same-origin, reverse-proxied under /ws — wss
+  // when the page itself was served over TLS by the front nginx.
+  const scheme = location.protocol === 'https:' ? 'wss' : 'ws';
+  return `${scheme}://${location.host}/ws`;
 }
 
 export function isTestMode(): boolean {
