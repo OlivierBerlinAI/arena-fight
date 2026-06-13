@@ -82,6 +82,9 @@ class App {
   constructor() {
     this.nameScreen.focus();
     this.wireControlsHelp();
+    // Begin the menu theme right away; it stays silent until the first gesture
+    // unlocks the audio context, then fades in.
+    this.updateMusic(this.phase);
   }
 
   /** Top-right button → modal overlay listing the keyboard shortcuts. */
@@ -118,6 +121,31 @@ class App {
     }
     this.countdownOverlay.classList.toggle('active', phase === 'countdown');
     this.resultOverlay.classList.toggle('active', phase === 'ended');
+
+    this.updateMusic(phase);
+  }
+
+  /** Pick the soundtrack for a screen: menu theme in the lobby, battle theme in-match. */
+  private updateMusic(phase: UiPhase): void {
+    switch (phase) {
+      case 'name':
+      case 'lobby':
+      case 'room':
+        this.sound.playMusic('lobby');
+        break;
+      case 'playing':
+        this.sound.playMusic('game');
+        break;
+      case 'ended':
+        // Silence under the result overlay so the victory/defeat jingle lands.
+        this.sound.stopMusic();
+        break;
+      case 'countdown':
+        // Keep whatever is already playing through the 3·2·1.
+        break;
+      default:
+        break;
+    }
   }
 
   private toLobby(): void {

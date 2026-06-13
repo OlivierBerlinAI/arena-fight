@@ -24,9 +24,94 @@ interface VoiceOpts {
   attack?: number;
 }
 
+// --------------------------------------------------------------- soundtracks
+// Two looping, fully-synthesised retro-futuristic tracks (a calm synthwave
+// lobby theme and a driving battle theme) scheduled with a lookahead clock.
+
+/** Output level of the dedicated music bus, sitting under the SFX. */
+const MUSIC_VOL = 0.55;
+/** How far ahead the sequencer schedules notes (seconds). */
+const MUSIC_LOOKAHEAD = 0.12;
+/** How often the sequencer wakes to schedule the next slice (ms). */
+const MUSIC_TICK_MS = 25;
+
+type MusicTrackName = 'lobby' | 'game';
+
+interface TrackDef {
+  bpm: number;
+  /** total 16th-note steps in one loop (4 bars × 16) */
+  steps: number;
+  play: (step: number, at: number) => void;
+}
+
+/** Equal-tempered frequency of a note name like `A4`, `C#3`, `G#5`. */
+const SEMITONE: Record<string, number> = {
+  C: -9, 'C#': -8, D: -7, 'D#': -6, E: -5, F: -4, 'F#': -3, G: -2, 'G#': -1, A: 0, 'A#': 1, B: 2,
+};
+function hz(note: string): number {
+  const m = /^([A-G]#?)(\d)$/.exec(note);
+  if (!m) return 440;
+  const semis = SEMITONE[m[1]] + (Number(m[2]) - 4) * 12;
+  return 440 * 2 ** (semis / 12);
+}
+
+interface Chord {
+  bass: number;
+  triad: [number, number, number];
+}
+function chord(bassNote: string, a: string, b: string, c: string): Chord {
+  return { bass: hz(bassNote), triad: [hz(a), hz(b), hz(c)] };
+}
+
+/** Eight-step (eighth-note) up-and-down arpeggio over a triad. */
+function arp8([r, th, f]: [number, number, number]): number[] {
+  return [r, th, f, r * 2, f, th, r, th];
+}
+/** Sixteen-step (sixteenth-note) bubbling arpeggio over a triad. */
+function arp16([r, th, f]: [number, number, number]): number[] {
+  const cell = [r, th, f, r * 2];
+  return [...cell, ...cell, ...cell, ...cell];
+}
+
+// Lobby — Am · F · C · G, the wistful "standby" synthwave loop.
+const LOBBY_CHORDS: Chord[] = [
+  chord('A2', 'A3', 'C4', 'E4'),
+  chord('F2', 'F3', 'A3', 'C4'),
+  chord('C3', 'C4', 'E4', 'G4'),
+  chord('G2', 'G3', 'B3', 'D4'),
+];
+const LOBBY_ARP = LOBBY_CHORDS.map((c) => arp8(c.triad));
+/** Sparse high bell motif, one hit just after a few downbeats. */
+const LOBBY_BELL = ((): number[] => {
+  const a = new Array<number>(64).fill(0);
+  a[2] = hz('E5');
+  a[20] = hz('C5');
+  a[34] = hz('G5');
+  a[52] = hz('B4');
+  return a;
+})();
+
+// Game — Am · F · G · E (harmonic-minor V), tense and driving.
+const GAME_CHORDS: Chord[] = [
+  chord('A2', 'A3', 'C4', 'E4'),
+  chord('F2', 'F3', 'A3', 'C4'),
+  chord('G2', 'G3', 'B3', 'D4'),
+  chord('E2', 'E3', 'G#3', 'B3'),
+];
+const GAME_ARP = GAME_CHORDS.map((c) => arp16(c.triad));
+/** Heroic lead, one note per beat (16 across the loop), all chord tones. */
+const GAME_LEAD = [
+  'A4', 'E5', 'C5', 'E5',
+  'F5', 'C5', 'A4', 'C5',
+  'G5', 'D5', 'B4', 'D5',
+  'E5', 'B4', 'G#4', 'B4',
+].map(hz);
+
 export class SoundEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+  /** dedicated bus for the soundtracks so they can be levelled/faded apart from SFX */
+  private musicGain: GainNode | null = null;
   private noiseBuf: AudioBuffer | null = null;
   private pulse25: PeriodicWave | null = null;
   private pulse12: PeriodicWave | null = null;
@@ -34,6 +119,16 @@ export class SoundEngine {
   private readonly lastAt = new Map<string, number>();
   /** projectile ids seen in the previous snapshot, for fire/detonation diffing */
   private prevProj = new Map<number, ProjectileSnap['kind']>();
+
+  // music sequencer state
+  private musicTrack: MusicTrackName | null = null;
+  private musicTimer: number | null = null;
+  private nextStepTime = 0;
+  private musicStep = 0;
+  private readonly tracks: Record<MusicTrackName, TrackDef> = {
+    lobby: { bpm: 90, steps: 64, play: (s, t): void => this.lobbyStep(s, t) },
+    game: { bpm: 140, steps: 64, play: (s, t): void => this.gameStep(s, t) },
+  };
 
   constructor() {
     try {
@@ -64,6 +159,13 @@ export class SoundEngine {
       const comp = this.ctx.createDynamicsCompressor();
       master.connect(comp).connect(this.ctx.destination);
       this.master = master;
+
+      // Music rides its own sub-bus; it starts silent and is faded in by
+      // playMusic() so the soundtrack never bursts in before the first gesture.
+      const musicGain = this.ctx.createGain();
+      musicGain.gain.value = 0;
+      musicGain.connect(master);
+      this.musicGain = musicGain;
 
       // one second of white noise, reused by every explosion/hit
       const len = Math.floor(this.ctx.sampleRate);
@@ -105,6 +207,7 @@ export class SoundEngine {
     } catch {
       /* ignore */
     }
+    this.applyMusicGain(); // fade the soundtrack out/in with the mute toggle
     return this.muted;
   }
 
@@ -123,6 +226,12 @@ export class SoundEngine {
 
   // ----------------------------------------------------------- synth voices
 
+  /** Apply a built-in oscillator type or a custom periodic wave. */
+  private applyWave(osc: OscillatorNode, wave: Wave): void {
+    if (wave instanceof PeriodicWave) osc.setPeriodicWave(wave);
+    else osc.type = wave;
+  }
+
   private voice(freq: number, opts: VoiceOpts = {}): void {
     const ctx = this.ctx;
     const master = this.master;
@@ -130,8 +239,7 @@ export class SoundEngine {
     const { dur = 0.1, vol = 0.2, wave = 'square', sweepTo, when = 0, attack = 0.006 } = opts;
     const t = ctx.currentTime + 0.001 + when;
     const osc = ctx.createOscillator();
-    if (wave instanceof PeriodicWave) osc.setPeriodicWave(wave);
-    else osc.type = wave;
+    this.applyWave(osc, wave);
     osc.frequency.setValueAtTime(Math.max(1, freq), t);
     if (sweepTo !== undefined) osc.frequency.exponentialRampToValueAtTime(Math.max(1, sweepTo), t + dur);
     const g = ctx.createGain();
@@ -256,10 +364,21 @@ export class SoundEngine {
       case 'unitQueued':
         if (ev.player === me) this.voice(880, { wave: this.pulse25 ?? 'square', dur: 0.05, vol: 0.12 });
         break;
-      case 'unitDeployed':
-        if (ev.player === me) this.arp([523, 784], 0.06, { wave: this.pulse25 ?? 'square', dur: 0.08, vol: 0.14 });
-        else this.voice(300, { wave: 'square', dur: 0.07, vol: 0.07 });
+      case 'unitDeployed': {
+        const dread = ev.unit === 'dreadnought';
+        if (ev.player !== me) {
+          // Enemy fielded a unit — a dreadnought rolling out earns a klaxon.
+          if (dread) this.dreadnoughtWarning();
+          else this.voice(300, { wave: 'square', dur: 0.07, vol: 0.07 });
+        } else if (dread) {
+          // Your own heavy walker deploys with a weightier confirmation.
+          this.arp([392, 523, 784], 0.07, { wave: this.pulse25 ?? 'square', dur: 0.12, vol: 0.16 });
+          this.voice(98, { wave: 'triangle', dur: 0.35, vol: 0.18, sweepTo: 70 });
+        } else {
+          this.arp([523, 784], 0.06, { wave: this.pulse25 ?? 'square', dur: 0.08, vol: 0.14 });
+        }
         break;
+      }
       case 'unitDestroyed':
         this.noise({ dur: 0.22, vol: ev.owner === me ? 0.24 : 0.18, from: 900, to: 80 });
         this.voice(ev.owner === me ? 200 : 320, { wave: 'square', dur: 0.16, vol: 0.1, sweepTo: ev.owner === me ? 90 : 180 });
@@ -313,6 +432,26 @@ export class SoundEngine {
       default:
         break;
     }
+  }
+
+  /**
+   * Enemy dreadnought alert: an ominous low swell, a descending alarm sweep and
+   * an urgent low two-tone klaxon. Distinct (lower, heavier) from the base-attack
+   * warning so it reads instantly as "a heavy unit is incoming".
+   */
+  private dreadnoughtWarning(): void {
+    if (!this.throttle('dread', 0.4)) return; // collapse simultaneous deploys
+    // rising sub rumble + descending klaxon sweep
+    this.voice(70, { wave: 'triangle', dur: 0.8, vol: 0.22, sweepTo: 130 });
+    this.voice(880, { wave: this.pulse12 ?? 'square', dur: 0.5, vol: 0.16, sweepTo: 220 });
+    // three urgent low two-tone blips (Bb4 / Eb4)
+    for (let i = 0; i < 3; i++) {
+      const when = i * 0.26;
+      this.voice(466, { wave: 'square', dur: 0.12, vol: 0.2, when });
+      this.voice(311, { wave: 'square', dur: 0.12, vol: 0.2, when: when + 0.13 });
+    }
+    // metallic noise stab to punctuate the alarm
+    this.noise({ dur: 0.4, vol: 0.18, from: 2000, to: 160 });
   }
 
   // ----------------------------------------------------------- transform + UI
@@ -379,5 +518,191 @@ export class SoundEngine {
     } catch {
       /* ignore */
     }
+  }
+
+  // ----------------------------------------------------------- soundtrack
+
+  /**
+   * Start (or switch to) a looping soundtrack. Idempotent for the current track.
+   * Safe to call before the first gesture — nothing is heard until the context
+   * resumes, and the sequencer only advances while the context is running.
+   */
+  playMusic(track: MusicTrackName): void {
+    if (this.musicTrack === track) return;
+    this.musicTrack = track;
+    this.musicStep = 0;
+    if (this.ctx) this.nextStepTime = this.ctx.currentTime + 0.06;
+    this.resume();
+    this.applyMusicGain();
+    if (this.musicTimer === null) {
+      this.musicTimer = window.setInterval(() => this.pump(), MUSIC_TICK_MS);
+    }
+  }
+
+  /** Stop the soundtrack and fade the music bus out (SFX keep playing). */
+  stopMusic(): void {
+    if (this.musicTrack === null) return;
+    this.musicTrack = null;
+    if (this.musicTimer !== null) {
+      window.clearInterval(this.musicTimer);
+      this.musicTimer = null;
+    }
+    this.applyMusicGain();
+  }
+
+  /** Fade the music bus toward its target level (0 when muted or stopped). */
+  private applyMusicGain(): void {
+    const ctx = this.ctx;
+    const g = this.musicGain;
+    if (!ctx || !g) return;
+    const target = this.muted || this.musicTrack === null ? 0 : MUSIC_VOL;
+    const now = ctx.currentTime;
+    g.gain.cancelScheduledValues(now);
+    g.gain.setValueAtTime(g.gain.value, now);
+    g.gain.linearRampToValueAtTime(target, now + 0.12);
+  }
+
+  /** Lookahead scheduler: emit every step whose time falls inside the window. */
+  private pump(): void {
+    try {
+      const ctx = this.ctx;
+      const name = this.musicTrack;
+      if (!ctx || name === null) return;
+      const track = this.tracks[name];
+      // Hold the clock steady while suspended or muted so we resume without a burst.
+      if (this.muted || ctx.state !== 'running') {
+        this.nextStepTime = ctx.currentTime;
+        return;
+      }
+      if (this.nextStepTime < ctx.currentTime) this.nextStepTime = ctx.currentTime + 0.02;
+      const stepDur = 15 / track.bpm; // 60 / bpm / 4 → one sixteenth note
+      while (this.nextStepTime < ctx.currentTime + MUSIC_LOOKAHEAD) {
+        track.play(this.musicStep, this.nextStepTime);
+        this.musicStep = (this.musicStep + 1) % track.steps;
+        this.nextStepTime += stepDur;
+      }
+    } catch {
+      /* never let the soundtrack throw out of a timer */
+    }
+  }
+
+  // --------------------------------------------------- music synth voices
+
+  /** A music note routed through the music bus, with a pluck or sustain shape. */
+  private mvoice(
+    freq: number,
+    at: number,
+    dur: number,
+    vol: number,
+    wave: Wave,
+    opts: { sweepTo?: number; attack?: number; release?: number; sustain?: boolean } = {}
+  ): void {
+    const ctx = this.ctx;
+    const dest = this.musicGain;
+    if (!ctx || !dest) return;
+    const { sweepTo, attack = 0.006, release = 0.05, sustain = false } = opts;
+    const v = Math.max(0.0002, vol);
+    const osc = ctx.createOscillator();
+    this.applyWave(osc, wave);
+    osc.frequency.setValueAtTime(Math.max(1, freq), at);
+    if (sweepTo !== undefined) osc.frequency.exponentialRampToValueAtTime(Math.max(1, sweepTo), at + dur);
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0.0001, at);
+    g.gain.exponentialRampToValueAtTime(v, at + attack);
+    if (sustain) g.gain.setValueAtTime(v, Math.max(at + attack + 0.005, at + dur - release));
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    osc.connect(g).connect(dest);
+    osc.start(at);
+    osc.stop(at + dur + 0.03);
+  }
+
+  /** A filtered noise burst on the music bus (drum bodies / cymbals). */
+  private mnoise(
+    at: number,
+    dur: number,
+    vol: number,
+    opts: { from: number; to: number; type?: BiquadFilterType; q?: number }
+  ): void {
+    const ctx = this.ctx;
+    const dest = this.musicGain;
+    if (!ctx || !dest || !this.noiseBuf) return;
+    const { from, to, type = 'lowpass', q } = opts;
+    const src = ctx.createBufferSource();
+    src.buffer = this.noiseBuf;
+    const filt = ctx.createBiquadFilter();
+    filt.type = type;
+    filt.frequency.setValueAtTime(from, at);
+    filt.frequency.exponentialRampToValueAtTime(Math.max(40, to), at + dur);
+    if (q !== undefined) filt.Q.value = q;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(vol, at);
+    g.gain.exponentialRampToValueAtTime(0.0001, at + dur);
+    src.connect(filt).connect(g).connect(dest);
+    src.start(at);
+    src.stop(at + dur + 0.02);
+  }
+
+  private mkick(at: number, vol = 0.3): void {
+    this.mvoice(140, at, 0.13, vol, 'triangle', { sweepTo: 46, attack: 0.002 });
+    this.mnoise(at, 0.02, vol * 0.4, { from: 5000, to: 1000 }); // beater click
+  }
+
+  private msnare(at: number, vol = 0.22): void {
+    this.mnoise(at, 0.16, vol, { from: 3200, to: 800, type: 'bandpass', q: 0.8 });
+    this.mvoice(190, at, 0.12, vol * 0.45, 'square', { sweepTo: 120, attack: 0.002 });
+  }
+
+  private mhat(at: number, vol = 0.05, open = false): void {
+    this.mnoise(at, open ? 0.1 : 0.035, vol, { from: 9000, to: 6000, type: 'highpass' });
+  }
+
+  // ----------------------------------------------------- per-step sequencing
+
+  /** Lobby theme: gentle pad, eighth-note arpeggio, soft bass and sparse bells. */
+  private lobbyStep(step: number, t: number): void {
+    const bar = (step >> 4) & 3;
+    const s = step & 15;
+    const ch = LOBBY_CHORDS[bar];
+    const sd = 15 / 90; // sixteenth-note duration
+
+    if (s === 0) {
+      this.mvoice(ch.bass, t, sd * 7.5, 0.17, 'triangle', { sustain: true, attack: 0.012 });
+      for (const f of ch.triad) {
+        this.mvoice(f, t, sd * 15.5, 0.03, this.pulse12 ?? 'square', { sustain: true, attack: 0.12, release: 0.5 });
+      }
+    }
+    if (s === 8) this.mvoice(ch.bass * 2, t, sd * 3.5, 0.06, 'triangle', { sustain: true });
+    if ((s & 1) === 0) {
+      this.mvoice(LOBBY_ARP[bar][s >> 1], t, sd * 1.5, 0.07, this.pulse25 ?? 'square', { attack: 0.004 });
+    }
+    const bell = LOBBY_BELL[step];
+    if (bell) this.mvoice(bell, t, sd * 3, 0.05, this.pulse12 ?? 'square', { attack: 0.005 });
+  }
+
+  /** Battle theme: driving bass, fast arp, stabs, a heroic lead and chip drums. */
+  private gameStep(step: number, t: number): void {
+    const bar = (step >> 4) & 3;
+    const s = step & 15;
+    const ch = GAME_CHORDS[bar];
+    const sd = 15 / 140;
+
+    // driving sixteenth-note root bass, accented on each beat
+    const accent = (s & 3) === 0;
+    this.mvoice(ch.bass, t, sd * 0.9, accent ? 0.2 : 0.12, 'triangle', { attack: 0.003 });
+    // fast arpeggio bed
+    this.mvoice(GAME_ARP[bar][s], t, sd * 0.9, 0.055, this.pulse25 ?? 'square', { attack: 0.003 });
+    // syncopated chord stabs on the offbeats of beats 2 and 4
+    if (s === 6 || s === 14) {
+      for (const f of ch.triad) this.mvoice(f, t, sd * 1.4, 0.06, this.pulse12 ?? 'square', { attack: 0.004 });
+    }
+    // heroic lead, one sustained note per beat
+    if (accent) {
+      this.mvoice(GAME_LEAD[(step >> 2) & 15], t, sd * 3.2, 0.12, this.pulse25 ?? 'square', { attack: 0.005, sustain: true });
+    }
+    // chip drum kit
+    if (s === 0 || s === 4 || s === 8 || s === 12) this.mkick(t);
+    if (s === 4 || s === 12) this.msnare(t);
+    if ((s & 1) === 0) this.mhat(t, 0.05);
+    if (s === 14) this.mhat(t, 0.06, true); // open-hat pickup into the next bar
   }
 }
