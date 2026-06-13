@@ -51,8 +51,16 @@ export class MatchController {
   private disposed = false;
   private ended = false;
 
-  private readonly audioBtn = byId<HTMLButtonElement>('hud-audio');
-  private readonly onAudioClick = (): void => this.toggleMute();
+  private readonly musicBtn = byId<HTMLButtonElement>('hud-audio-music');
+  private readonly sfxBtn = byId<HTMLButtonElement>('hud-audio-sfx');
+  private readonly onMusicClick = (): void => {
+    this.sound.toggleMusicMuted();
+    this.updateAudioButtons();
+  };
+  private readonly onSfxClick = (): void => {
+    this.sound.toggleSfxMuted();
+    this.updateAudioButtons();
+  };
 
   constructor(
     private readonly net: Net,
@@ -78,8 +86,9 @@ export class MatchController {
     });
     this.input.setPlaying(true);
 
-    this.audioBtn.addEventListener('click', this.onAudioClick);
-    this.updateAudioButton();
+    this.musicBtn.addEventListener('click', this.onMusicClick);
+    this.sfxBtn.addEventListener('click', this.onSfxClick);
+    this.updateAudioButtons();
 
     gameHook.playerIndex = cfg.playerIndex;
     gameHook.winner = null;
@@ -175,23 +184,23 @@ export class MatchController {
     this.renderer.render();
   }
 
-  private toggleMute(): void {
-    this.sound.toggleMuted();
-    this.updateAudioButton();
+  private updateAudioButtons(): void {
+    this.setAudioBtn(this.musicBtn, 'MUSIC', 'Music', this.sound.isMusicMuted);
+    this.setAudioBtn(this.sfxBtn, 'SFX', 'Effects', this.sound.isSfxMuted);
   }
 
-  private updateAudioButton(): void {
-    const muted = this.sound.isMuted;
-    this.audioBtn.textContent = muted ? '♪̸' : '♪';
-    this.audioBtn.classList.toggle('muted', muted);
-    this.audioBtn.title = muted ? 'Sound off (M)' : 'Sound on (M)';
+  private setAudioBtn(btn: HTMLButtonElement, label: string, name: string, muted: boolean): void {
+    btn.textContent = `${muted ? '♪̸' : '♪'} ${label}`;
+    btn.classList.toggle('muted', muted);
+    btn.title = `${name} ${muted ? 'off' : 'on'}`;
   }
 
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     cancelAnimationFrame(this.raf);
-    this.audioBtn.removeEventListener('click', this.onAudioClick);
+    this.musicBtn.removeEventListener('click', this.onMusicClick);
+    this.sfxBtn.removeEventListener('click', this.onSfxClick);
     this.input.dispose();
     this.hud.dispose();
     this.entities.dispose();

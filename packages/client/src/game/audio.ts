@@ -9,7 +9,10 @@
  */
 import type { PlayerIndex, ProjectileSnap, SimEvent } from '@precinct/shared';
 
-const MUTE_KEY = 'precinct.muted';
+const MUSIC_MUTE_KEY = 'precinct.muted.music';
+const SFX_MUTE_KEY = 'precinct.muted.sfx';
+/** Pre-split single mute flag; seeds both channels for returning users. */
+const LEGACY_MUTE_KEY = 'precinct.muted';
 
 type Wave = OscillatorType | PeriodicWave;
 
@@ -124,7 +127,8 @@ export class SoundEngine {
   private noiseBuf: AudioBuffer | null = null;
   private pulse25: PeriodicWave | null = null;
   private pulse12: PeriodicWave | null = null;
-  private muted = false;
+  private musicMuted = false;
+  private sfxMuted = false;
   private readonly lastAt = new Map<string, number>();
   /** projectile ids seen in the previous snapshot, for fire/detonation diffing */
   private prevProj = new Map<number, ProjectileSnap['kind']>();
@@ -143,7 +147,9 @@ export class SoundEngine {
 
   constructor() {
     try {
-      this.muted = localStorage.getItem(MUTE_KEY) === '1';
+      const legacy = localStorage.getItem(LEGACY_MUTE_KEY);
+      this.musicMuted = (localStorage.getItem(MUSIC_MUTE_KEY) ?? legacy) === '1';
+      this.sfxMuted = (localStorage.getItem(SFX_MUTE_KEY) ?? legacy) === '1';
     } catch {
       /* private mode / no storage — default unmuted */
     }
@@ -206,24 +212,40 @@ export class SoundEngine {
     if (this.ctx && this.ctx.state === 'suspended') void this.ctx.resume().catch(() => undefined);
   }
 
-  get isMuted(): boolean {
-    return this.muted;
+  get isMusicMuted(): boolean {
+    return this.musicMuted;
   }
 
-  /** Toggle mute, persist it, return the new state. */
-  toggleMuted(): boolean {
-    this.muted = !this.muted;
+  get isSfxMuted(): boolean {
+    return this.sfxMuted;
+  }
+
+  /** Toggle the soundtrack on/off (persisted); fades the music bus. */
+  toggleMusicMuted(): boolean {
+    this.musicMuted = !this.musicMuted;
+    this.persistMute(MUSIC_MUTE_KEY, this.musicMuted);
+    this.applyMusicGain();
+    return this.musicMuted;
+  }
+
+  /** Toggle the sound effects on/off (persisted). */
+  toggleSfxMuted(): boolean {
+    this.sfxMuted = !this.sfxMuted;
+    this.persistMute(SFX_MUTE_KEY, this.sfxMuted);
+    return this.sfxMuted;
+  }
+
+  private persistMute(key: string, on: boolean): void {
     try {
-      localStorage.setItem(MUTE_KEY, this.muted ? '1' : '0');
+      localStorage.setItem(key, on ? '1' : '0');
     } catch {
       /* ignore */
     }
-    this.applyMusicGain(); // fade the soundtrack out/in with the mute toggle
-    return this.muted;
   }
 
+  /** SFX are live unless the effects channel is muted. */
   private get live(): boolean {
-    return this.ctx !== null && this.master !== null && !this.muted;
+    return this.ctx !== null && this.master !== null && !this.sfxMuted;
   }
 
   /** True at most once per `minGap` seconds for the given key (rate limiter). */
@@ -567,7 +589,7 @@ export class SoundEngine {
     const ctx = this.ctx;
     const g = this.musicGain;
     if (!ctx || !g) return;
-    const target = this.muted || this.musicTrack === null ? 0 : MUSIC_VOL;
+    const target = this.musicMuted || this.musicTrack === null ? 0 : MUSIC_VOL;
     const now = ctx.currentTime;
     g.gain.cancelScheduledValues(now);
     g.gain.setValueAtTime(g.gain.value, now);
@@ -582,7 +604,7 @@ export class SoundEngine {
       if (!ctx || name === null) return;
       const track = this.tracks[name];
       // Hold the clock steady while suspended or muted so we resume without a burst.
-      if (this.muted || ctx.state !== 'running') {
+      if (this.musicMuted || ctx.state !== 'running') {
         this.nextStepTime = ctx.currentTime;
         return;
       }

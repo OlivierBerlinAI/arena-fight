@@ -313,15 +313,22 @@ input[type='text']:focus {
 #hud-ping {
   color: var(--dim);
 }
+.hud-audio-group {
+  display: flex;
+  gap: 6px;
+  /* #hud is pointer-events:none so the mouse aims through it — re-enable here */
+  pointer-events: auto;
+}
 .hud-audio {
   background: var(--panel);
   border: 1px solid var(--line);
   color: var(--text);
-  font-size: 16px;
+  font-size: 11px;
+  letter-spacing: 1px;
   line-height: 1;
-  padding: 6px 12px;
+  padding: 7px 10px;
   cursor: pointer;
-  /* #hud is pointer-events:none so the mouse aims through it — re-enable here */
+  white-space: nowrap;
   pointer-events: auto;
 }
 .hud-audio:hover {
