@@ -106,6 +106,8 @@ const GAME_LEAD = [
   'G4', 'D4', 'B3', 'D4',
   'E4', 'B3', 'G#3', 'B3',
 ].map(hz);
+/** Slow half-note sub-bass line (root↔fifth) that walks under the driving pulse. */
+const GAME_BASS_MEL = ['A2', 'E3', 'F2', 'C3', 'G2', 'D3', 'E2', 'B2'].map(hz);
 
 export class SoundEngine {
   private ctx: AudioContext | null = null;
@@ -125,6 +127,8 @@ export class SoundEngine {
   private musicTimer: number | null = null;
   private nextStepTime = 0;
   private musicStep = 0;
+  /** how many full loops the current track has played (drives the lead's octave flip) */
+  private musicLoop = 0;
   private readonly tracks: Record<MusicTrackName, TrackDef> = {
     lobby: { bpm: 90, steps: 64, play: (s, t): void => this.lobbyStep(s, t) },
     game: { bpm: 140, steps: 64, play: (s, t): void => this.gameStep(s, t) },
@@ -531,6 +535,7 @@ export class SoundEngine {
     if (this.musicTrack === track) return;
     this.musicTrack = track;
     this.musicStep = 0;
+    this.musicLoop = 0;
     if (this.ctx) this.nextStepTime = this.ctx.currentTime + 0.06;
     this.resume();
     this.applyMusicGain();
@@ -578,7 +583,11 @@ export class SoundEngine {
       const stepDur = 15 / track.bpm; // 60 / bpm / 4 → one sixteenth note
       while (this.nextStepTime < ctx.currentTime + MUSIC_LOOKAHEAD) {
         track.play(this.musicStep, this.nextStepTime);
-        this.musicStep = (this.musicStep + 1) % track.steps;
+        this.musicStep += 1;
+        if (this.musicStep >= track.steps) {
+          this.musicStep = 0;
+          this.musicLoop += 1;
+        }
         this.nextStepTime += stepDur;
       }
     } catch {
@@ -686,18 +695,25 @@ export class SoundEngine {
     const ch = GAME_CHORDS[bar];
     const sd = 15 / 140;
 
-    // driving sixteenth-note root bass, accented on each beat
+    // slow, melodic sub-bass: a sustained half-note bass line walking root↔fifth
+    if ((s & 7) === 0) {
+      this.mvoice(GAME_BASS_MEL[(step >> 3) & 7], t, sd * 8, 0.18, 'triangle', { attack: 0.01, release: 0.08, sustain: true });
+    }
+    // driving sixteenth-note root pulse — tighter/quieter now the bass line carries the low end
     const accent = (s & 3) === 0;
-    this.mvoice(ch.bass, t, sd * 0.9, accent ? 0.2 : 0.12, 'triangle', { attack: 0.003 });
+    this.mvoice(ch.bass, t, sd * 0.7, accent ? 0.13 : 0.08, 'triangle', { attack: 0.003 });
     // fast arpeggio bed
     this.mvoice(GAME_ARP[bar][s], t, sd * 0.9, 0.055, this.pulse25 ?? 'square', { attack: 0.003 });
     // syncopated chord stabs on the offbeats of beats 2 and 4
     if (s === 6 || s === 14) {
       for (const f of ch.triad) this.mvoice(f, t, sd * 1.4, 0.06, this.pulse12 ?? 'square', { attack: 0.004 });
     }
-    // heroic lead, one sustained note per beat
+    // heroic lead, one sustained note per beat; its octave flips every full loop —
+    // an extra octave down first, then back to the current octave, alternating.
     if (accent) {
-      this.mvoice(GAME_LEAD[(step >> 2) & 15], t, sd * 3.2, 0.12, this.pulse25 ?? 'square', { attack: 0.005, sustain: true });
+      const lowPass = (this.musicLoop & 1) === 0;
+      const lead = GAME_LEAD[(step >> 2) & 15] * (lowPass ? 0.5 : 1);
+      this.mvoice(lead, t, sd * 3.2, 0.12, this.pulse25 ?? 'square', { attack: 0.005, sustain: true });
     }
     // chip drum kit
     if (s === 0 || s === 4 || s === 8 || s === 12) this.mkick(t);
