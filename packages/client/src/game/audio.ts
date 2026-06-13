@@ -130,8 +130,8 @@ export class SoundEngine {
     const { dur = 0.1, vol = 0.2, wave = 'square', sweepTo, when = 0, attack = 0.006 } = opts;
     const t = ctx.currentTime + 0.001 + when;
     const osc = ctx.createOscillator();
-    if (typeof wave === 'string') osc.type = wave;
-    else osc.setPeriodicWave(wave);
+    if (wave instanceof PeriodicWave) osc.setPeriodicWave(wave);
+    else osc.type = wave;
     osc.frequency.setValueAtTime(Math.max(1, freq), t);
     if (sweepTo !== undefined) osc.frequency.exponentialRampToValueAtTime(Math.max(1, sweepTo), t + dur);
     const g = ctx.createGain();

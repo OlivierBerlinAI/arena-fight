@@ -1,40 +1,49 @@
 /**
- * Input: WASD relative to camera yaw, mouse-on-ground-plane aim (no pointer
- * lock), LMB fire / RMB alt, 1/2 build hotkeys, F3 debug toggle. Sends the
- * `input` message at 30 Hz while a match is running.
+ * Keyboard-only controls (the mouse is intentionally unused for gameplay):
+ *   W / S  drive forward / reverse along the facing direction
+ *   A / D  rotate the mech left / right (this also turns the chase camera)
+ *   M      primary fire (gatling as a walker, laser while hovering)
+ *   N      secondary fire (rockets — walker only)
+ *   F      transform walker ⇄ hover
+ *   1 / 2  build hovertank / dreadnought
+ *   F3     debug overlay
+ *
+ * Movement and facing are converted to the existing wire input: `mx,mz` is the
+ * thrust vector along the facing heading and `aimX,aimZ` is a point far ahead
+ * on that heading, so the authoritative simulation (unchanged) sets the mech's
+ * yaw to the heading and fires along it.
  */
-import * as THREE from 'three';
 import type { MechMode, PlayerInput, UnitType, Vec2 } from '@precinct/shared';
 
 const SEND_INTERVAL_MS = 1000 / 30;
 /** key that toggles walker ⇄ hover */
 const TRANSFORM_CODE = 'KeyF';
+/** turn speed in radians per second */
+const TURN_RATE = 3.0;
+/** reverse is a little slower than forward */
+const REVERSE_THROTTLE = 0.65;
+/** how far ahead to project the aim point along the heading */
+const AIM_REACH = 40;
 
 export interface InputCallbacks {
   onBuild: (unit: UnitType) => void;
   onToggleDebug: () => void;
   /** fired when the player toggles locomotion mode (for immediate SFX) */
   onTransform: (mode: MechMode) => void;
-  /** fired when the player presses the mute key */
-  onToggleMute: () => void;
   sendInput: (input: PlayerInput) => void;
 }
 
 export class InputManager {
   private readonly keys = new Set<string>();
-  private fire = false;
-  private alt = false;
   private mode: MechMode = 'walker';
-  private ndc = new THREE.Vector2(0, 0);
-  private hasMouse = false;
   private sendTimer: number | null = null;
   private playing = false;
 
-  /** world-space point on y=0 the mouse aims at (updated per frame) */
+  /** client-side facing heading (radians); the camera and aim both follow it */
+  private facingYaw = 0;
+  private facingInit = false;
+  /** world-space point ahead of the mech on the current heading */
   aimPoint: Vec2 | null = null;
-
-  private readonly raycaster = new THREE.Raycaster();
-  private readonly groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
     if (e.code === 'F3') {
@@ -48,48 +57,19 @@ export class InputManager {
     else if (e.code === TRANSFORM_CODE) {
       this.mode = this.mode === 'walker' ? 'hover' : 'walker';
       this.cb.onTransform(this.mode);
-    } else if (e.code === 'KeyM') this.cb.onToggleMute();
-    else this.keys.add(e.code);
+    } else this.keys.add(e.code);
   };
   private readonly onKeyUp = (e: KeyboardEvent): void => {
     this.keys.delete(e.code);
   };
   private readonly onBlur = (): void => {
     this.keys.clear();
-    this.fire = false;
-    this.alt = false;
-  };
-  private readonly onMouseMove = (e: MouseEvent): void => {
-    const rect = this.canvas.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
-    this.ndc.set(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
-    this.hasMouse = true;
-  };
-  private readonly onMouseDown = (e: MouseEvent): void => {
-    if (e.button === 0) this.fire = true;
-    if (e.button === 2) this.alt = true;
-  };
-  private readonly onMouseUp = (e: MouseEvent): void => {
-    if (e.button === 0) this.fire = false;
-    if (e.button === 2) this.alt = false;
-  };
-  private readonly onContextMenu = (e: Event): void => {
-    e.preventDefault();
   };
 
-  constructor(
-    private readonly canvas: HTMLCanvasElement,
-    private readonly camera: THREE.PerspectiveCamera,
-    private readonly cb: InputCallbacks
-  ) {
+  constructor(private readonly cb: InputCallbacks) {
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.onBlur);
-    window.addEventListener('mousemove', this.onMouseMove);
-    canvas.addEventListener('mousedown', this.onMouseDown);
-    window.addEventListener('mouseup', this.onMouseUp);
-    canvas.addEventListener('contextmenu', this.onContextMenu);
-    window.addEventListener('contextmenu', this.onContextMenu);
 
     this.sendTimer = window.setInterval(() => {
       if (!this.playing) return;
@@ -102,51 +82,42 @@ export class InputManager {
     if (!playing) this.onBlur();
   }
 
-  /** Re-project the mouse onto the ground plane with the current camera. */
-  updateAim(fallback: Vec2 | null): void {
-    if (!this.hasMouse) {
-      this.aimPoint = fallback;
-      return;
+  /**
+   * Per-frame: integrate the facing heading from the turn keys and project the
+   * aim point ahead of the mech. While dead, the heading resyncs to the mech's
+   * (respawn) yaw so the player starts facing the right way again.
+   */
+  update(mech: { x: number; z: number; yaw: number; alive: boolean }, dt: number): void {
+    if (!this.facingInit || !mech.alive) {
+      this.facingYaw = mech.yaw;
+      this.facingInit = true;
+    } else {
+      const turn = (this.keys.has('KeyD') ? 1 : 0) - (this.keys.has('KeyA') ? 1 : 0);
+      this.facingYaw += turn * TURN_RATE * dt;
     }
-    this.raycaster.setFromCamera(this.ndc, this.camera);
-    const hit = new THREE.Vector3();
-    if (this.raycaster.ray.intersectPlane(this.groundPlane, hit)) {
-      this.aimPoint = { x: hit.x, z: hit.z };
-    } else if (fallback) {
-      this.aimPoint = fallback;
-    }
+    const dx = Math.cos(this.facingYaw);
+    const dz = Math.sin(this.facingYaw);
+    this.aimPoint = { x: mech.x + dx * AIM_REACH, z: mech.z + dz * AIM_REACH };
   }
 
   currentInput(): PlayerInput {
-    // camera-relative WASD
-    const dir = new THREE.Vector3();
-    this.camera.getWorldDirection(dir);
-    let fx = dir.x;
-    let fz = dir.z;
-    const flen = Math.hypot(fx, fz);
-    if (flen > 1e-6) {
-      fx /= flen;
-      fz /= flen;
-    } else {
-      fx = 0;
-      fz = -1;
-    }
-    // right = forward x up
-    const rx = -fz;
-    const rz = fx;
+    const dx = Math.cos(this.facingYaw);
+    const dz = Math.sin(this.facingYaw);
+    const throttle =
+      (this.keys.has('KeyW') ? 1 : 0) - (this.keys.has('KeyS') ? REVERSE_THROTTLE : 0);
+    const mx = dx * throttle;
+    const mz = dz * throttle;
 
-    const f = (this.keys.has('KeyW') ? 1 : 0) - (this.keys.has('KeyS') ? 1 : 0);
-    const r = (this.keys.has('KeyD') ? 1 : 0) - (this.keys.has('KeyA') ? 1 : 0);
-    let mx = fx * f + rx * r;
-    let mz = fz * f + rz * r;
-    const mlen = Math.hypot(mx, mz);
-    if (mlen > 1) {
-      mx /= mlen;
-      mz /= mlen;
-    }
-
-    const aim = this.aimPoint ?? { x: 0, z: 0 };
-    return { mx, mz, aimX: aim.x, aimZ: aim.z, fire: this.fire, alt: this.alt, mode: this.mode };
+    const aim = this.aimPoint ?? { x: dx * AIM_REACH, z: dz * AIM_REACH };
+    return {
+      mx,
+      mz,
+      aimX: aim.x,
+      aimZ: aim.z,
+      fire: this.keys.has('KeyM'),
+      alt: this.keys.has('KeyN'),
+      mode: this.mode,
+    };
   }
 
   dispose(): void {
@@ -154,10 +125,5 @@ export class InputManager {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
-    window.removeEventListener('mousemove', this.onMouseMove);
-    this.canvas.removeEventListener('mousedown', this.onMouseDown);
-    window.removeEventListener('mouseup', this.onMouseUp);
-    this.canvas.removeEventListener('contextmenu', this.onContextMenu);
-    window.removeEventListener('contextmenu', this.onContextMenu);
   }
 }

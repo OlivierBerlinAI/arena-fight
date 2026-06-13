@@ -29,16 +29,18 @@ different game server explicitly, use `http://<host-ip>:5273/?server=<ip>:8080`.
 
 ## How to play
 
+The controls are **keyboard-only** — the mouse is not used during a match.
+A **CONTROLS** button (top-right) opens an overlay with this list at any time.
+
 | Control | Action |
 | --- | --- |
-| `W A S D` | Strafe (screen-relative). The chase camera follows you automatically from a fixed angle — the mouse never moves it. |
-| Mouse | Aim the torso (projected onto the ground) |
-| Left mouse | Primary fire — **Gatling** as a walker, **Laser** while hovering. Both share the **heat meter**; overheating locks it for 2 s |
-| Right mouse | **Rockets** — splash damage, 3-rocket magazine, then a reload (**walker only** — disabled in hover) |
+| `W` / `S` | Drive forward / reverse along the facing direction |
+| `A` / `D` | Turn left / right — the chase camera always looks where the mech faces |
+| `M` | Primary fire — **Gatling** as a walker, **Laser** while hovering. Both share the **heat meter**; overheating locks it for 2 s |
+| `N` | **Rockets** — splash damage, 3-rocket magazine, then a reload (**walker only** — disabled in hover) |
 | `F` | Transform **Walker ⇄ Hover**. Hover glides faster with low drag, but trades rockets for the laser |
-| `1` | Build **Hovertank** (50¢, 5 s) — fast, fragile lane robot |
-| `2` | Build **Dreadnought** (200¢, 15 s) — slow, 400 HP, splash cannon |
-| `M` | Mute / unmute sound (also the ♪ button in the HUD top bar) |
+| `1` / `2` | Build **Hovertank** (50¢, 5 s) / **Dreadnought** (200¢, 15 s) |
+| ♪ button | Mute / unmute sound (HUD top bar) |
 | `F3` | Debug overlay (fps, ping, ticks, snapshot age, entity counts) |
 
 - **Sound:** all audio is synthesised procedurally at runtime (retro 8-bit /

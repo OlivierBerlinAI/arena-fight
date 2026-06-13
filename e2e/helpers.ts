@@ -20,6 +20,8 @@ export interface GameEntityInfo {
   alive?: boolean;
   /** mechs only: 'walker' | 'hover' */
   mode?: string;
+  /** mechs only: facing direction in radians */
+  yaw?: number;
 }
 
 export interface GameHook {

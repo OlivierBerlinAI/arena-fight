@@ -637,3 +637,50 @@ input[type='text']:focus {
   color: var(--red);
   text-shadow: 0 0 30px rgba(239, 68, 68, 0.7);
 }
+
+/* controls help: always-available top-right button + shortcuts overlay */
+.controls-btn {
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  z-index: 30;
+  background: var(--panel);
+  border: 1px solid var(--line-bright);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 1px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.controls-btn:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+.controls-table {
+  border-collapse: collapse;
+  margin: 8px auto 14px;
+  font-size: 14px;
+}
+.controls-table td {
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.controls-table td:first-child {
+  white-space: nowrap;
+  color: var(--cyan);
+}
+kbd {
+  display: inline-block;
+  min-width: 18px;
+  text-align: center;
+  padding: 2px 6px;
+  border: 1px solid var(--line-bright);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  background: #060a10;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text);
+}

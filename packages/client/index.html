@@ -172,6 +172,26 @@
 
       <!-- ============ Error banner ============ -->
       <div id="error-banner" data-testid="error-banner"></div>
+
+      <!-- ============ Controls help (top-right button + overlay) ============ -->
+      <button id="controls-btn" data-testid="controls-btn" class="controls-btn" title="Show controls">⌨ CONTROLS</button>
+      <div id="controls-overlay" class="overlay" data-testid="controls-overlay">
+        <div class="panel center-panel">
+          <h2>CONTROLS</h2>
+          <table class="controls-table">
+            <tr><td><kbd>W</kbd> / <kbd>S</kbd></td><td>Drive forward / reverse</td></tr>
+            <tr><td><kbd>A</kbd> / <kbd>D</kbd></td><td>Turn left / right (the camera follows)</td></tr>
+            <tr><td><kbd>M</kbd></td><td>Fire primary &mdash; gatling, or laser while hovering</td></tr>
+            <tr><td><kbd>N</kbd></td><td>Fire rockets (walker only)</td></tr>
+            <tr><td><kbd>F</kbd></td><td>Transform walker &harr; hover</td></tr>
+            <tr><td><kbd>1</kbd> / <kbd>2</kbd></td><td>Build hovertank / dreadnought</td></tr>
+            <tr><td>&#9834; button</td><td>Mute / unmute sound</td></tr>
+            <tr><td><kbd>F3</kbd></td><td>Debug overlay</td></tr>
+          </table>
+          <p class="dim">The mouse is not used during the match.</p>
+          <button id="controls-close" data-testid="controls-close" class="btn primary">CLOSE</button>
+        </div>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

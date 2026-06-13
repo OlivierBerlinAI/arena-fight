@@ -63,18 +63,17 @@ export class MatchController {
     this.buffer = new SnapshotBuffer(cfg.tickMs);
     this.renderer = new GameRenderer(byId('canvas-root'), this.balance);
     this.entities = new EntityManager(this.renderer.scene, this.balance);
-    this.chase = new ChaseCamera(this.renderer.camera, cfg.playerIndex);
+    this.chase = new ChaseCamera(this.renderer.camera);
     this.minimap = new Minimap(byId<HTMLCanvasElement>('minimap'), cfg.playerIndex);
 
     const sendBuild = (unit: UnitType): void => {
       this.net.send({ type: 'build', unit });
     };
     this.hud = new Hud(this.balance, cfg.playerIndex, cfg.tickRate, sendBuild);
-    this.input = new InputManager(this.renderer.canvas, this.renderer.camera, {
+    this.input = new InputManager({
       onBuild: sendBuild,
       onToggleDebug: () => this.debug.toggle(),
       onTransform: (mode) => this.sound.transform(mode === 'hover'),
-      onToggleMute: () => this.toggleMute(),
       sendInput: (input) => this.net.send({ type: 'input', ...input }),
     });
     this.input.setPlaying(true);
@@ -135,7 +134,7 @@ export class MatchController {
       const myMech = view.mechs[this.cfg.playerIndex];
       if (myMech) {
         this.chase.update(myMech, dt);
-        this.input.updateAim({ x: myMech.x + Math.cos(myMech.yaw) * 8, z: myMech.z + Math.sin(myMech.yaw) * 8 });
+        this.input.update(myMech, dt);
       }
 
       const player = latest.players[this.cfg.playerIndex];
@@ -205,7 +204,7 @@ export class MatchController {
 function serializeEntities(snap: Snapshot): GameEntityInfo[] {
   const out: GameEntityInfo[] = [];
   for (const m of snap.mechs) {
-    out.push({ kind: 'mech', id: `mech-${m.player}`, owner: m.player, x: m.x, z: m.z, hp: m.hp, alive: m.alive, mode: m.mode });
+    out.push({ kind: 'mech', id: `mech-${m.player}`, owner: m.player, x: m.x, z: m.z, hp: m.hp, alive: m.alive, mode: m.mode, yaw: m.yaw });
   }
   for (const u of snap.units) {
     out.push({ kind: 'unit', id: `unit-${u.id}`, owner: u.owner, x: u.x, z: u.z, hp: u.hp, type: u.type, alive: true });

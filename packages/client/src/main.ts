@@ -76,9 +76,29 @@ class App {
   private readonly countdownNumber = byId('countdown-number');
   private readonly resultOverlay = byId('screen-result');
   private readonly errorBanner = byId('error-banner');
+  private readonly controlsBtn = byId<HTMLButtonElement>('controls-btn');
+  private readonly controlsOverlay = byId('controls-overlay');
 
   constructor() {
     this.nameScreen.focus();
+    this.wireControlsHelp();
+  }
+
+  /** Top-right button → modal overlay listing the keyboard shortcuts. */
+  private wireControlsHelp(): void {
+    const overlay = this.controlsOverlay;
+    const setOpen = (open: boolean): void => {
+      this.sound.uiClick();
+      overlay.classList.toggle('active', open);
+    };
+    this.controlsBtn.addEventListener('click', () => setOpen(true));
+    byId('controls-close').addEventListener('click', () => setOpen(false));
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) setOpen(false); // click the backdrop to dismiss
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Escape' && overlay.classList.contains('active')) setOpen(false);
+    });
   }
 
   // ------------------------------------------------------------- phases
