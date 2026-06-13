@@ -106,6 +106,13 @@ const GAME_LEAD = [
   'G4', 'D4', 'B3', 'D4',
   'E4', 'B3', 'G#3', 'B3',
 ].map(hz);
+/** Second lead — an answering, rising counter-melody that arrives on the 3rd pass. */
+const GAME_LEAD2 = [
+  'C4', 'E4', 'A4', 'E4',
+  'A3', 'C4', 'F4', 'C4',
+  'B3', 'D4', 'G4', 'D4',
+  'G#3', 'B3', 'E4', 'B3',
+].map(hz);
 /** Slow half-note sub-bass line (root↔fifth) that walks under the driving pulse. */
 const GAME_BASS_MEL = ['A2', 'E3', 'F2', 'C3', 'G2', 'D3', 'E2', 'B2'].map(hz);
 
@@ -708,12 +715,13 @@ export class SoundEngine {
     if (s === 6 || s === 14) {
       for (const f of ch.triad) this.mvoice(f, t, sd * 1.4, 0.06, this.pulse12 ?? 'square', { attack: 0.004 });
     }
-    // heroic lead, one sustained note per beat; its octave flips every full loop —
-    // an extra octave down first, then back to the current octave, alternating.
+    // heroic lead, one sustained note per beat. A three-loop rotation: an octave
+    // down, then the current octave, then a second answering melody — repeating.
     if (accent) {
-      const lowPass = (this.musicLoop & 1) === 0;
-      const lead = GAME_LEAD[(step >> 2) & 15] * (lowPass ? 0.5 : 1);
-      this.mvoice(lead, t, sd * 3.2, 0.12, this.pulse25 ?? 'square', { attack: 0.005, sustain: true });
+      const beat = (step >> 2) & 15;
+      const phase = this.musicLoop % 3;
+      const lead = phase === 0 ? GAME_LEAD[beat] * 0.5 : phase === 1 ? GAME_LEAD[beat] : GAME_LEAD2[beat];
+      this.mvoice(lead, t, sd * 3.2, 0.06, this.pulse25 ?? 'square', { attack: 0.005, sustain: true });
     }
     // chip drum kit
     if (s === 0 || s === 4 || s === 8 || s === 12) this.mkick(t);
