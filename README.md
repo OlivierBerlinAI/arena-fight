@@ -68,8 +68,8 @@ A **CONTROLS** button (top-right) opens an overlay with this list at any time.
 packages/shared   protocol types, balance presets, map layout, and the pure
                   deterministic simulation core (GameSimulation) used by both
                   server and tests — no sockets, no timers, seeded PRNG
-packages/server   authoritative Node server: lobby, rooms, 30 Hz tick loop,
-                  snapshot broadcast, /debug/state endpoint, bot client
+packages/server   authoritative Node server: lobby, rooms, configurable tick
+                  loop (100 Hz default), snapshot broadcast, /debug/state, bots
 packages/client   Three.js client: lobby UI, renderer, interpolation, HUD,
                   minimap, build bar — plain TypeScript + DOM, no framework
 e2e               Playwright end-to-end tests (two browser contexts)
@@ -78,8 +78,8 @@ e2e               Playwright end-to-end tests (two browser contexts)
 The server is authoritative: clients only send inputs and build commands;
 every message is validated (`parseClientMessage`) and every build command is
 re-checked against credits/queue/cap inside the simulation. State snapshots
-broadcast at 15 Hz; clients render ~100 ms in the past, interpolating between
-snapshots.
+broadcast every other tick (≈50 Hz at the default 100 Hz tick rate); clients
+render ~100 ms in the past, interpolating between snapshots.
 
 ## Testing
 
@@ -113,7 +113,8 @@ state hash), which is what makes the headless test layers possible.
 | Var | Default | Effect |
 | --- | --- | --- |
 | `PORT` | `8080` | HTTP + WebSocket port |
-| `TICK_MS` | `33.3` | wall-clock ms per tick (pacing only — sim semantics are tick-based) |
+| `TICK_RATE` | `100` | simulation ticks per second (Hz); scales the balance, sent to clients in `matchStart` |
+| `TICK_MS` | `1000/TICK_RATE` | wall-clock ms per tick (pacing only — overrides the rate-derived default) |
 | `LOG_LEVEL` | `info` | `debug` enables per-tick diagnostics |
 | `BALANCE_PRESET` | per-room | force `default` or `test` balance for all rooms |
 

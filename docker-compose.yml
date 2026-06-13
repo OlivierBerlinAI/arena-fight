@@ -16,6 +16,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: "8080"
+      TICK_RATE: ${TICK_RATE:-100}    # simulation ticks per second (Hz)
       LOG_LEVEL: ${LOG_LEVEL:-info}
       MAX_CONNECTIONS: ${MAX_CONNECTIONS:-500}
       DEBUG_STATE: "false"            # never expose the debug dump in production

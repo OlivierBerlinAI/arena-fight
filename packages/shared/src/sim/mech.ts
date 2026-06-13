@@ -1,13 +1,10 @@
 import { clampLen, fromAngle } from '../math.js';
-import { SIM_TICK_RATE } from '../balance.js';
 import type { Balance } from '../balance.js';
 import { GAME_MAP } from '../map.js';
 import type { PRNG } from '../prng.js';
 import { collideWithStatics } from './collision.js';
 import { NULL_INPUT } from './state.js';
 import type { MechState, PlayerInput, ProjectileState, SimEvent, SimState } from './state.js';
-
-const DT = 1 / SIM_TICK_RATE;
 
 export function stepMechs(
   state: SimState,
@@ -50,6 +47,7 @@ function respawn(mech: MechState, state: SimState, balance: Balance, events: Sim
 
 function move(mech: MechState, input: PlayerInput, state: SimState, balance: Balance): void {
   const b = balance.mech;
+  const DT = 1 / balance.tickRate;
   const hover = mech.mode === 'hover';
   const accel = hover ? b.hoverAccel : b.accel;
   const friction = hover ? b.hoverFriction : b.friction;
@@ -146,7 +144,7 @@ function weapons(
     // Rockets detonate when they reach the aimed ground point (or on impact).
     const flightTicks = Math.max(
       2,
-      Math.min(r.projectileTtlTicks, Math.ceil((aimDist / r.projectileSpeed) * SIM_TICK_RATE))
+      Math.min(r.projectileTtlTicks, Math.ceil((aimDist / r.projectileSpeed) * balance.tickRate))
     );
     spawnProjectile(state, {
       owner: mech.player,

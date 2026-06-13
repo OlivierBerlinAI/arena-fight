@@ -6,7 +6,7 @@
  * (core win or forfeit) → back to waiting with both players un-readied, so
  * re-readying starts an instant rematch on a fresh simulation.
  */
-import { GameSimulation, getBalance, SIM_TICK_RATE, SNAPSHOT_EVERY_TICKS } from '@precinct/shared';
+import { GameSimulation, getBalance, SNAPSHOT_EVERY_TICKS } from '@precinct/shared';
 import type {
   BalancePresetName,
   MatchEndReason,
@@ -32,6 +32,8 @@ export interface RoomOptions {
   id: string;
   name: string;
   preset: BalancePresetName;
+  /** simulation ticks per second (Hz) — the balance is scaled to this rate */
+  tickRate: number;
   /** wall-clock ms between simulation ticks (pacing only) */
   tickMs: number;
   /** wall-clock ms per countdown second (tests shrink this) */
@@ -50,6 +52,7 @@ export class Room {
   status: RoomStatus = 'waiting';
   readonly clients: ClientConn[] = [];
 
+  private readonly tickRate: number;
   private readonly tickMs: number;
   private readonly countdownSecondMs: number;
   private readonly logger: Logger;
@@ -70,6 +73,7 @@ export class Room {
     this.id = opts.id;
     this.name = opts.name;
     this.preset = opts.preset;
+    this.tickRate = opts.tickRate;
     this.tickMs = opts.tickMs;
     this.countdownSecondMs = opts.countdownSecondMs;
     this.logger = opts.logger;
@@ -189,7 +193,7 @@ export class Room {
 
   private startMatch(): void {
     const seed = Math.floor(Math.random() * 0xffffffff) >>> 0;
-    this.sim = new GameSimulation({ seed, balance: getBalance(this.preset) });
+    this.sim = new GameSimulation({ seed, balance: getBalance(this.preset, this.tickRate) });
     this.status = 'playing';
     this.inputs = [null, null];
     this.pendingCommands = [];
@@ -209,7 +213,7 @@ export class Room {
         seed,
         playerIndex: i as PlayerIndex,
         preset: this.preset,
-        tickRate: SIM_TICK_RATE,
+        tickRate: this.tickRate,
         tickMs: this.tickMs,
       });
     });

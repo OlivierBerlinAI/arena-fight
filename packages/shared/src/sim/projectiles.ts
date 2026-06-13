@@ -1,5 +1,4 @@
 import { segmentAABBHit, segmentCircleHit, distSq } from '../math.js';
-import { SIM_TICK_RATE } from '../balance.js';
 import type { Balance } from '../balance.js';
 import { GAME_MAP } from '../map.js';
 import type {
@@ -11,8 +10,6 @@ import type {
   TurretState,
   UnitState,
 } from './state.js';
-
-const DT = 1 / SIM_TICK_RATE;
 
 type HitTarget =
   | { kind: 'wall' }
@@ -26,6 +23,7 @@ type HitTarget =
  * direct + splash damage, and expire splash projectiles at their fuse point.
  */
 export function stepProjectiles(state: SimState, balance: Balance, events: SimEvent[]): void {
+  const DT = 1 / balance.tickRate;
   const deadUnits = new Set<number>();
   const survivors: ProjectileState[] = [];
 

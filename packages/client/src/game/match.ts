@@ -67,7 +67,7 @@ export class MatchController {
     readonly cfg: MatchConfig,
     private readonly sound: SoundEngine
   ) {
-    this.balance = getBalance(cfg.preset);
+    this.balance = getBalance(cfg.preset, cfg.tickRate);
     this.buffer = new SnapshotBuffer(cfg.tickMs);
     this.renderer = new GameRenderer(byId('canvas-root'), this.balance);
     this.entities = new EntityManager(this.renderer.scene, this.balance);

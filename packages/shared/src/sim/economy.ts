@@ -1,4 +1,3 @@
-import { SIM_TICK_RATE } from '../balance.js';
 import type { Balance, UnitType } from '../balance.js';
 import { GAME_MAP } from '../map.js';
 import type { SimCommand, SimEvent, SimState, UnitState, PlayerIndex } from './state.js';
@@ -12,7 +11,7 @@ export function stepEconomy(state: SimState, balance: Balance): void {
     }
     const perSecond =
       balance.economy.passivePerSecond + turrets * balance.economy.perTurretPerSecond;
-    player.credits += perSecond / SIM_TICK_RATE;
+    player.credits += perSecond / balance.tickRate;
   }
 }
 

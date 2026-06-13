@@ -32,7 +32,7 @@ class App {
   private phase: UiPhase = 'name';
   private match: MatchController | null = null;
   private playerIndex: PlayerIndex = 0;
-  private tickRate = 30;
+  private tickRate = 100; // placeholder until matchStart carries the server's rate
   private displayName = '';
   private helloSent = false;
   private errorTimer: number | null = null;
