@@ -26,8 +26,19 @@ export function send(client: ClientConn, msg: ServerMessage): void {
   }
 }
 
+/** Drop a connection that never sends a valid hello (it just holds a socket). */
+const HELLO_TIMEOUT_MS = 15_000;
+
 export function attachConnection(lobby: LobbyManager, ws: WebSocket): void {
   const client = lobby.register(ws);
+
+  const helloTimer = setTimeout(() => {
+    if (client.name === null) {
+      lobby.logger.warn('hello timeout — closing idle connection', { clientId: client.id });
+      ws.close(1008, 'hello required');
+    }
+  }, HELLO_TIMEOUT_MS);
+  if (typeof helloTimer.unref === 'function') helloTimer.unref();
 
   ws.on('message', (data: RawData, isBinary: boolean) => {
     // parseClientMessage rejects anything that is not a JSON text frame.
@@ -54,7 +65,9 @@ export function attachConnection(lobby: LobbyManager, ws: WebSocket): void {
       return;
     }
     try {
+      const hadName = client.name !== null;
       lobby.handleMessage(client, msg);
+      if (!hadName && client.name !== null) clearTimeout(helloTimer);
     } catch (err) {
       // Defensive: a handler bug must never take the process down.
       lobby.logger.error('message handler error', {
@@ -66,7 +79,10 @@ export function attachConnection(lobby: LobbyManager, ws: WebSocket): void {
     }
   });
 
-  ws.on('close', () => lobby.handleDisconnect(client));
+  ws.on('close', () => {
+    clearTimeout(helloTimer);
+    lobby.handleDisconnect(client);
+  });
   ws.on('error', (err: Error) => {
     lobby.logger.warn('socket error', { clientId: client.id, error: err.message });
   });

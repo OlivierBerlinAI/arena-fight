@@ -1,0 +1,71 @@
+name: mech-arena-fight
+
+# Two separate containers — game server and static frontend — both bound to
+# localhost only. The host's own nginx terminates TLS (Let's Encrypt) and
+# reverse-proxies to them; nothing here is published to the public internet.
+# See DEPLOY.md and deploy/nginx/mech-arena-fight.conf.
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: packages/server/Dockerfile
+    image: mech-arena-fight-server
+    restart: unless-stopped
+    init: true
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      MAX_CONNECTIONS: ${MAX_CONNECTIONS:-500}
+      DEBUG_STATE: "false"            # never expose the debug dump in production
+    ports:
+      - "${SERVER_BIND:-127.0.0.1}:${SERVER_PORT:-8090}:8080"
+    # --- hardening: contain the blast radius even if the app misbehaves ---
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    mem_limit: 512m
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:8080/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  client:
+    build:
+      context: .
+      dockerfile: packages/client/Dockerfile
+    image: mech-arena-fight-client
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${CLIENT_BIND:-127.0.0.1}:${CLIENT_PORT:-8091}:8080"
+    # --- hardening ---
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/cache/nginx
+      - /var/run
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 128
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:8080/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
