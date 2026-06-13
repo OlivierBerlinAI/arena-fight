@@ -1,16 +1,16 @@
-name: arena-mech-fight
+name: mech-arena-fight
 
 # Two separate containers — game server and static frontend — both bound to
 # localhost only. The host's own nginx terminates TLS (Let's Encrypt) and
 # reverse-proxies to them; nothing here is published to the public internet.
-# See DEPLOY.md and deploy/nginx/arena-mech-fight.conf.
+# See DEPLOY.md and deploy/nginx/mech-arena-fight.conf.
 
 services:
   server:
     build:
       context: .
       dockerfile: packages/server/Dockerfile
-    image: arena-mech-fight-server
+    image: mech-arena-fight-server
     restart: unless-stopped
     init: true
     environment:
@@ -46,7 +46,7 @@ services:
     build:
       context: .
       dockerfile: packages/client/Dockerfile
-    image: arena-mech-fight-client
+    image: mech-arena-fight-client
     restart: unless-stopped
     init: true
     ports:

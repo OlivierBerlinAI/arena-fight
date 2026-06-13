@@ -19,7 +19,7 @@ erreichbar.
 ## 1. Voraussetzungen
 
 - Docker + Docker Compose auf dem VPS.
-- Eine **DNS-A-(und AAAA-)Record** für `arena-mech-fight.olivier.berlin`, der
+- Eine **DNS-A-(und AAAA-)Record** für `mech-arena-fight.olivier.berlin`, der
   auf die öffentliche IP des VPS zeigt. Das muss **vor** certbot stehen, sonst
   schlägt die Let's-Encrypt-Validierung fehl.
 - `certbot` mit nginx-Plugin (`sudo apt install certbot python3-certbot-nginx`).
@@ -42,8 +42,8 @@ curl -sI http://127.0.0.1:8091/ | head -1      # -> 200  (frontend)
 ## 3. Host-nginx einrichten
 
 ```bash
-sudo cp deploy/nginx/arena-mech-fight.conf /etc/nginx/sites-available/
-sudo ln -s /etc/nginx/sites-available/arena-mech-fight.conf /etc/nginx/sites-enabled/
+sudo cp deploy/nginx/mech-arena-fight.conf /etc/nginx/sites-available/
+sudo ln -s /etc/nginx/sites-available/mech-arena-fight.conf /etc/nginx/sites-enabled/
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
@@ -53,16 +53,16 @@ sudo nginx -t && sudo systemctl reload nginx
 ## 4. Let's Encrypt aktivieren
 
 ```bash
-sudo certbot --nginx -d arena-mech-fight.olivier.berlin
+sudo certbot --nginx -d mech-arena-fight.olivier.berlin
 ```
 
 certbot holt das Zertifikat, ergänzt die Site automatisch um den
 `listen 443 ssl`-Block samt HTTP→HTTPS-Weiterleitung und richtet die
 automatische Erneuerung ein (systemd-Timer). Danach läuft alles über
 `https://` bzw. `wss://` — der Client erkennt das von selbst und verbindet sich
-zu `wss://arena-mech-fight.olivier.berlin/ws`.
+zu `wss://mech-arena-fight.olivier.berlin/ws`.
 
-Fertig: **https://arena-mech-fight.olivier.berlin** aufrufen.
+Fertig: **https://mech-arena-fight.olivier.berlin** aufrufen.
 
 ## 5. Updaten / Neustarten
 
