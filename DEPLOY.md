@@ -39,30 +39,59 @@ curl -s http://127.0.0.1:8090/health           # -> ok   (server)
 curl -sI http://127.0.0.1:8091/ | head -1      # -> 200  (frontend)
 ```
 
-## 3. Host-nginx einrichten
+## 3. Zertifikat holen (ohne die nginx-Config anzufassen)
+
+```bash
+sudo certbot certonly --nginx -d mech-arena-fight.olivier.berlin
+```
+
+> **Wichtig:** `certonly` holt nur das Zertifikat und beantwortet die
+> HTTP-01-Challenge über die laufende nginx, **schreibt aber keine
+> Server-Blöcke**. Das vermeidet die häufigste Stolperfalle von `certbot
+> --nginx`: dass certbot einen zweiten Vhost mit gleichem `server_name` in eine
+> andere Config packt → konkurrierende Blöcke → HTTPS-Redirect-Loop
+> ("Umleitungsfehler"). Siehe Troubleshooting unten.
+
+## 4. Host-nginx einrichten
 
 ```bash
 sudo cp deploy/nginx/mech-arena-fight.conf /etc/nginx/sites-available/
-sudo ln -s /etc/nginx/sites-available/mech-arena-fight.conf /etc/nginx/sites-enabled/
+sudo ln -s /etc/nginx/sites-available/mech-arena-fight.conf \
+           /etc/nginx/sites-enabled/mech-arena-fight.conf
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-> Die Ports in der Site-Config (`8090`/`8091`) müssen zu `SERVER_PORT` /
-> `CLIENT_PORT` aus deiner `.env` passen.
+- Die Ports in der Site-Config (`8090`/`8091`) müssen zu `SERVER_PORT` /
+  `CLIENT_PORT` aus deiner `.env` passen.
+- `nginx -t` darf **keine** Warnung `conflicting server name … ignored` zeigen —
+  dann beanspruchte ein anderer Vhost dieselbe Domain (siehe Troubleshooting).
 
-## 4. Let's Encrypt aktivieren
+Gegenchecks:
 
 ```bash
-sudo certbot --nginx -d mech-arena-fight.olivier.berlin
+curl -sI  http://mech-arena-fight.olivier.berlin/  | grep -iE '^HTTP|^location'  # 301 -> https
+curl -sI https://mech-arena-fight.olivier.berlin/  | grep -iE '^HTTP'            # 200, kein location:
+
+# WebSocket end-to-end (erwartet: 101 Switching Protocols):
+curl -s -i -N --http1.1 \
+  -H "Connection: Upgrade" -H "Upgrade: websocket" \
+  -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+  -H "Sec-WebSocket-Version: 13" \
+  https://mech-arena-fight.olivier.berlin/ws | head -3
 ```
 
-certbot holt das Zertifikat, ergänzt die Site automatisch um den
-`listen 443 ssl`-Block samt HTTP→HTTPS-Weiterleitung und richtet die
-automatische Erneuerung ein (systemd-Timer). Danach läuft alles über
-`https://` bzw. `wss://` — der Client erkennt das von selbst und verbindet sich
-zu `wss://mech-arena-fight.olivier.berlin/ws`.
+Fertig: **https://mech-arena-fight.olivier.berlin** aufrufen (zum Testen ein
+privates Fenster nehmen — alte Redirects hängen sonst im Cache). Der Client
+erkennt TLS selbst und verbindet sich zu `wss://…/ws`.
 
-Fertig: **https://mech-arena-fight.olivier.berlin** aufrufen.
+Die automatische Erneuerung übernimmt der certbot-Timer; ein Reload-Hook hält
+nginx aktuell:
+
+```bash
+sudo systemctl list-timers | grep certbot      # Renew-Timer aktiv?
+echo 'nginx -s reload' | sudo tee /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+sudo chmod +x /etc/letsencrypt/renewal-hooks/deploy/reload-nginx.sh
+```
 
 ## 5. Updaten / Neustarten
 
@@ -72,6 +101,36 @@ docker compose up -d --build      # baut nur geänderte Images neu
 docker compose logs -f server     # strukturierte JSON-Logs
 
 docker compose down               # stoppen
+```
+
+## Troubleshooting: „Umleitungsfehler" / Redirect-Loop
+
+Symptom: `https://…/ws` (oder `/`) liefert `301`, der Browser meldet einen
+Umleitungsfehler. Ursache ist fast immer ein **zweiter Server-Block mit
+demselben `server_name`** — typischerweise von einem früheren `certbot --nginx`,
+das den TLS-/Redirect-Block in eine andere Config geschrieben hat.
+
+```bash
+# 1) Lädt mehr als ein Block die Domain?  -> "conflicting server name" beim Test
+sudo nginx -t
+
+# 2) ALLE Stellen finden, die die Domain beanspruchen:
+sudo grep -rIn 'mech-arena-fight' /etc/nginx/
+
+# 3) Den fremden/duplizierten Block (mit dem Redirect) entfernen, sodass NUR
+#    deploy/nginx/mech-arena-fight.conf übrig bleibt, dann:
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Direkt am Container testen (umgeht die Host-nginx) — kommt hier `101`, ist das
+Backend gesund und das Problem liegt eindeutig in der Host-nginx:
+
+```bash
+curl -s -i -N --http1.1 \
+  -H "Connection: Upgrade" -H "Upgrade: websocket" \
+  -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" \
+  -H "Sec-WebSocket-Version: 13" \
+  http://127.0.0.1:8090/ws | head -3
 ```
 
 ## Was an Härtung drinsteckt
