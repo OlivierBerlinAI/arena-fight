@@ -7,12 +7,20 @@ export type PlayerIndex = 0 | 1;
 /** -1 = neutral / nobody */
 export type Ownership = PlayerIndex | -1;
 
+/**
+ * Locomotion mode. `walker`: grounded, slower, both weapons. `hover`: glides
+ * faster with low drag, fires the laser instead of the gatling, rockets locked.
+ */
+export type MechMode = 'walker' | 'hover';
+
 export interface MechState {
   player: PlayerIndex;
   pos: Vec2;
   vel: Vec2;
   /** torso/aim direction in radians (atan2 on the XZ plane) */
   yaw: number;
+  /** current locomotion mode (set from player input each living tick) */
+  mode: MechMode;
   hp: number;
   alive: boolean;
   /** tick at which a dead mech respawns */
@@ -88,7 +96,7 @@ export interface TurretState {
   fireReadyAtTick: number;
 }
 
-export type ProjectileKind = 'gatling' | 'rocket' | 'unitLight' | 'unitHeavy' | 'turret';
+export type ProjectileKind = 'gatling' | 'laser' | 'rocket' | 'unitLight' | 'unitHeavy' | 'turret';
 
 export interface ProjectileState {
   id: number;
@@ -147,11 +155,13 @@ export interface PlayerInput {
   fire: boolean;
   /** secondary fire held (rockets) */
   alt: boolean;
+  /** desired locomotion mode (the client holds the toggle and resends it) */
+  mode: MechMode;
 }
 
 export type SimCommand = { type: 'build'; player: PlayerIndex; unit: UnitType };
 
-export const NULL_INPUT: PlayerInput = { mx: 0, mz: 0, aimX: 0, aimZ: 0, fire: false, alt: false };
+export const NULL_INPUT: PlayerInput = { mx: 0, mz: 0, aimX: 0, aimZ: 0, fire: false, alt: false, mode: 'walker' };
 
 // ---------------------------------------------------------------------------
 
@@ -162,6 +172,7 @@ function createMech(player: PlayerIndex, balance: Balance): MechState {
     pos: { ...spawn },
     vel: { x: 0, z: 0 },
     yaw: player === 0 ? Math.PI / 4 : -Math.PI * 0.75, // face map center
+    mode: 'walker',
     hp: balance.mech.maxHp,
     alive: true,
     respawnAtTick: 0,

@@ -58,7 +58,7 @@ export class MatchController {
     this.buffer = new SnapshotBuffer(cfg.tickMs);
     this.renderer = new GameRenderer(byId('canvas-root'), this.balance);
     this.entities = new EntityManager(this.renderer.scene, this.balance);
-    this.chase = new ChaseCamera(this.renderer.camera);
+    this.chase = new ChaseCamera(this.renderer.camera, cfg.playerIndex);
     this.minimap = new Minimap(byId<HTMLCanvasElement>('minimap'), cfg.playerIndex);
 
     const sendBuild = (unit: UnitType): void => {
@@ -122,7 +122,7 @@ export class MatchController {
 
       const myMech = view.mechs[this.cfg.playerIndex];
       if (myMech) {
-        this.chase.update(myMech, this.input.aimPoint, dt);
+        this.chase.update(myMech, dt);
         this.input.updateAim({ x: myMech.x + Math.cos(myMech.yaw) * 8, z: myMech.z + Math.sin(myMech.yaw) * 8 });
       }
 
@@ -132,10 +132,9 @@ export class MatchController {
         this.hud.update(latest.tick, mechSnap, player, this.net.rtt);
       }
 
-      const aim = this.input.aimPoint;
-      const viewYaw =
-        myMech && aim ? Math.atan2(aim.z - myMech.z, aim.x - myMech.x) : null;
-      this.minimap.draw(latest, viewYaw);
+      // Minimap "view" wedge follows the fixed chase-camera direction, not the
+      // mouse — the camera no longer rotates with aim.
+      this.minimap.draw(latest, this.chase.groundYaw);
 
       gameHook.snapshotAge = this.buffer.snapshotAge(now);
       this.debug.update({
@@ -181,7 +180,7 @@ export class MatchController {
 function serializeEntities(snap: Snapshot): GameEntityInfo[] {
   const out: GameEntityInfo[] = [];
   for (const m of snap.mechs) {
-    out.push({ kind: 'mech', id: `mech-${m.player}`, owner: m.player, x: m.x, z: m.z, hp: m.hp, alive: m.alive });
+    out.push({ kind: 'mech', id: `mech-${m.player}`, owner: m.player, x: m.x, z: m.z, hp: m.hp, alive: m.alive, mode: m.mode });
   }
   for (const u of snap.units) {
     out.push({ kind: 'unit', id: `unit-${u.id}`, owner: u.owner, x: u.x, z: u.z, hp: u.hp, type: u.type, alive: true });

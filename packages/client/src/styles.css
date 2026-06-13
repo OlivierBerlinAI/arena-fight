@@ -447,6 +447,32 @@ input[type='text']:focus {
   background: var(--yellow);
 }
 
+/* locomotion mode tag + transform hint */
+.mode-tag {
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 1px 8px;
+  border: 1px solid var(--line-bright);
+  color: var(--green);
+  background: #060a10;
+}
+.mode-tag.hover {
+  color: #9fe8ff;
+  border-color: #9fe8ff;
+  box-shadow: 0 0 8px rgba(159, 232, 255, 0.45);
+}
+.mode-hint {
+  margin-left: auto;
+  font-size: 10px;
+  opacity: 0.55;
+  letter-spacing: 0.5px;
+}
+/* rockets greyed out while hovering (laser only) */
+#hud-rockets.locked {
+  opacity: 0.3;
+  filter: grayscale(1);
+}
+
 /* build bar (bottom center) */
 #build-bar {
   position: absolute;

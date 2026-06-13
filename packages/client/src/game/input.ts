@@ -4,9 +4,11 @@
  * `input` message at 30 Hz while a match is running.
  */
 import * as THREE from 'three';
-import type { PlayerInput, UnitType, Vec2 } from '@precinct/shared';
+import type { MechMode, PlayerInput, UnitType, Vec2 } from '@precinct/shared';
 
 const SEND_INTERVAL_MS = 1000 / 30;
+/** key that toggles walker ⇄ hover */
+const TRANSFORM_CODE = 'KeyF';
 
 export interface InputCallbacks {
   onBuild: (unit: UnitType) => void;
@@ -18,6 +20,7 @@ export class InputManager {
   private readonly keys = new Set<string>();
   private fire = false;
   private alt = false;
+  private mode: MechMode = 'walker';
   private ndc = new THREE.Vector2(0, 0);
   private hasMouse = false;
   private sendTimer: number | null = null;
@@ -38,6 +41,7 @@ export class InputManager {
     if (e.repeat) return;
     if (e.code === 'Digit1') this.cb.onBuild('hovertank');
     else if (e.code === 'Digit2') this.cb.onBuild('dreadnought');
+    else if (e.code === TRANSFORM_CODE) this.mode = this.mode === 'walker' ? 'hover' : 'walker';
     else this.keys.add(e.code);
   };
   private readonly onKeyUp = (e: KeyboardEvent): void => {
@@ -135,7 +139,7 @@ export class InputManager {
     }
 
     const aim = this.aimPoint ?? { x: 0, z: 0 };
-    return { mx, mz, aimX: aim.x, aimZ: aim.z, fire: this.fire, alt: this.alt };
+    return { mx, mz, aimX: aim.x, aimZ: aim.z, fire: this.fire, alt: this.alt, mode: this.mode };
   }
 
   dispose(): void {

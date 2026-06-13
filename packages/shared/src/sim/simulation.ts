@@ -113,6 +113,7 @@ export class GameSimulation {
         vx: round3(m.vel.x),
         vz: round3(m.vel.z),
         yaw: round3(m.yaw),
+        mode: m.mode,
         hp: Math.ceil(m.hp),
         alive: m.alive,
         heat: Math.round(m.heat),

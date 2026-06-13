@@ -14,18 +14,28 @@ npm install
 npm run dev        # starts game server (:8080) + client (:5273) concurrently
 ```
 
-Open **http://localhost:5273 in two browser tabs** (or two machines on the
-LAN), enter a name in each, create a room in one tab, join it from the other,
-both click **Ready** — a 3-second countdown starts the match.
+Open **http://localhost:5273 in two browser tabs**, enter a name in each,
+create a room in one tab, join it from the other, both click **Ready** — a
+3-second countdown starts the match.
+
+### Playing over the LAN
+
+Both dev servers listen on all interfaces, so other machines just browse to
+the host's address: `http://<host-ip>:5273` (find the IP with `hostname -I`).
+The client automatically connects its WebSocket to port 8080 on whatever host
+served the page — no configuration needed. If it doesn't connect, check that
+no firewall on the host blocks ports 5273 and 8080; to point the client at a
+different game server explicitly, use `http://<host-ip>:5273/?server=<ip>:8080`.
 
 ## How to play
 
 | Control | Action |
 | --- | --- |
-| `W A S D` | Strafe (relative to the camera) |
+| `W A S D` | Strafe (screen-relative). The chase camera follows you automatically from a fixed angle — the mouse never moves it. |
 | Mouse | Aim the torso (projected onto the ground) |
-| Left mouse | Gatling — high rate of fire, watch the **heat meter**; overheating locks it for 2 s |
-| Right mouse | Rockets — splash damage, 3-rocket magazine, then a reload |
+| Left mouse | Primary fire — **Gatling** as a walker, **Laser** while hovering. Both share the **heat meter**; overheating locks it for 2 s |
+| Right mouse | **Rockets** — splash damage, 3-rocket magazine, then a reload (**walker only** — disabled in hover) |
+| `F` | Transform **Walker ⇄ Hover**. Hover glides faster with low drag, but trades rockets for the laser |
 | `1` | Build **Hovertank** (50¢, 5 s) — fast, fragile lane robot |
 | `2` | Build **Dreadnought** (200¢, 15 s) — slow, 400 HP, splash cannon |
 | `F3` | Debug overlay (fps, ping, ticks, snapshot age, entity counts) |

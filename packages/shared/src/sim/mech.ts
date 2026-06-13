@@ -22,6 +22,7 @@ export function stepMechs(
       continue;
     }
     const input = inputs[mech.player] ?? NULL_INPUT;
+    mech.mode = input.mode === 'hover' ? 'hover' : 'walker';
     move(mech, input, state, balance);
     aim(mech, input);
     weapons(mech, input, state, balance, rng);
@@ -34,6 +35,10 @@ function respawn(mech: MechState, state: SimState, balance: Balance, events: Sim
   mech.vel = { x: 0, z: 0 };
   mech.hp = balance.mech.maxHp;
   mech.alive = true;
+  // mode is intentionally NOT reset here: it is authoritative from input every
+  // living tick (see stepMechs) and the client holds the toggle, so a player
+  // who chose hover keeps hovering after respawning rather than silently
+  // snapping back for a single tick.
   mech.protectedUntilTick = state.tick + balance.mech.spawnProtectionTicks;
   mech.heat = 0;
   mech.overheatedUntilTick = 0;
@@ -45,13 +50,17 @@ function respawn(mech: MechState, state: SimState, balance: Balance, events: Sim
 
 function move(mech: MechState, input: PlayerInput, state: SimState, balance: Balance): void {
   const b = balance.mech;
+  const hover = mech.mode === 'hover';
+  const accel = hover ? b.hoverAccel : b.accel;
+  const friction = hover ? b.hoverFriction : b.friction;
+  const maxSpeed = hover ? b.hoverMaxSpeed : b.maxSpeed;
   const dir = clampLen({ x: numberOr0(input.mx), z: numberOr0(input.mz) }, 1);
-  mech.vel.x += dir.x * b.accel * DT;
-  mech.vel.z += dir.z * b.accel * DT;
-  const drag = Math.max(0, 1 - b.friction * DT);
+  mech.vel.x += dir.x * accel * DT;
+  mech.vel.z += dir.z * accel * DT;
+  const drag = Math.max(0, 1 - friction * DT);
   mech.vel.x *= drag;
   mech.vel.z *= drag;
-  mech.vel = clampLen(mech.vel, b.maxSpeed);
+  mech.vel = clampLen(mech.vel, maxSpeed);
   mech.pos.x += mech.vel.x * DT;
   mech.pos.z += mech.vel.z * DT;
   collideWithStatics(mech.pos, b.radius, state, balance);
@@ -73,42 +82,64 @@ function weapons(
   rng: PRNG
 ): void {
   const tick = state.tick;
+  const hover = mech.mode === 'hover';
 
-  // --- Gatling (primary) ---
+  // --- Primary: gatling (walker) or laser (hover) ---
+  // Both feed the same heat meter so the overheat behaviour is mode-agnostic.
   const g = balance.gatling;
-  let firedGatling = false;
+  const primary = hover
+    ? {
+        kind: 'laser' as const,
+        damage: balance.laser.damage,
+        interval: balance.laser.intervalTicks,
+        spread: balance.laser.spread,
+        speed: balance.laser.projectileSpeed,
+        ttl: balance.laser.projectileTtlTicks,
+        heatPerShot: balance.laser.heatPerShot,
+      }
+    : {
+        kind: 'gatling' as const,
+        damage: g.damage,
+        interval: g.intervalTicks,
+        spread: g.spread,
+        speed: g.projectileSpeed,
+        ttl: g.projectileTtlTicks,
+        heatPerShot: g.heatPerShot,
+      };
+  let firedPrimary = false;
   if (input.fire && tick >= mech.gatlingReadyAtTick && tick >= mech.overheatedUntilTick) {
-    const yaw = mech.yaw + rng.range(-g.spread, g.spread);
+    const yaw = primary.spread > 0 ? mech.yaw + rng.range(-primary.spread, primary.spread) : mech.yaw;
     spawnProjectile(state, {
       owner: mech.player,
-      kind: 'gatling',
+      kind: primary.kind,
       yaw,
       origin: mech,
-      speed: g.projectileSpeed,
-      damage: g.damage,
+      speed: primary.speed,
+      damage: primary.damage,
       splashRadius: 0,
-      ttlTicks: g.projectileTtlTicks,
+      ttlTicks: primary.ttl,
       muzzleOffset: balance.mech.radius + 0.4,
     });
-    mech.gatlingReadyAtTick = tick + g.intervalTicks;
-    mech.heat += g.heatPerShot;
-    firedGatling = true;
+    mech.gatlingReadyAtTick = tick + primary.interval;
+    mech.heat += primary.heatPerShot;
+    firedPrimary = true;
     if (mech.heat >= g.overheatAt) {
       mech.heat = g.overheatAt;
       mech.overheatedUntilTick = tick + g.overheatLockTicks;
     }
   }
-  if (!firedGatling) {
+  if (!firedPrimary) {
     mech.heat = Math.max(0, mech.heat - g.coolPerTick);
   }
 
-  // --- Rockets (secondary) ---
+  // --- Rockets (secondary, walker only) ---
+  // Ammo still reloads in hover so the magazine is full again on landing.
   const r = balance.rocket;
   if (mech.reloadEndTick > 0 && tick >= mech.reloadEndTick) {
     mech.rocketAmmo = r.magazine;
     mech.reloadEndTick = 0;
   }
-  if (input.alt && mech.rocketAmmo > 0 && mech.reloadEndTick === 0 && tick >= mech.rocketReadyAtTick) {
+  if (!hover && input.alt && mech.rocketAmmo > 0 && mech.reloadEndTick === 0 && tick >= mech.rocketReadyAtTick) {
     const dx = numberOr0(input.aimX) - mech.pos.x;
     const dz = numberOr0(input.aimZ) - mech.pos.z;
     const aimDist = Math.hypot(dx, dz);

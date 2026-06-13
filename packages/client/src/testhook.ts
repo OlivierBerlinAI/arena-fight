@@ -16,6 +16,8 @@ export interface GameEntityInfo {
   hp?: number;
   type?: string;
   alive?: boolean;
+  /** mechs only: 'walker' | 'hover' */
+  mode?: string;
 }
 
 export interface GameHook {
