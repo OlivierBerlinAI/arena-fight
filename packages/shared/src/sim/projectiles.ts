@@ -160,7 +160,10 @@ function damageMech(
   mech.alive = false;
   mech.respawnAtTick = state.tick + balance.mech.respawnTicks;
   state.players[player].stats.deaths += 1;
-  if (by !== -1 && by !== player) state.players[by].stats.kills += 1;
+  if (by !== -1 && by !== player) {
+    state.players[by].stats.kills += 1;
+    state.players[by].credits += balance.economy.killBounty.mech;
+  }
   events.push({ type: 'mechKilled', victim: player, byPlayer: by });
 }
 
@@ -179,7 +182,10 @@ function damageUnit(
   unit.hp = 0;
   deadUnits.add(unit.id);
   state.players[unit.owner].stats.robotsLost += 1;
-  if (by !== -1 && by !== unit.owner) state.players[by].stats.robotsDestroyed += 1;
+  if (by !== -1 && by !== unit.owner) {
+    state.players[by].stats.robotsDestroyed += 1;
+    state.players[by].credits += balance.economy.killBounty[unit.type];
+  }
   events.push({
     type: 'unitDestroyed',
     unitId: unit.id,

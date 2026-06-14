@@ -101,6 +101,8 @@ export interface Balance {
     startingCredits: number;
     passivePerSecond: number;
     perTurretPerSecond: number;
+    /** one-off credit reward to the killer: enemy mech, or a destroyed enemy unit */
+    killBounty: { mech: number } & Record<UnitType, number>;
   };
   units: Record<UnitType, UnitBalance>;
   unitCap: number;
@@ -175,6 +177,7 @@ function buildDefault(T: number): Balance {
       startingCredits: 100,
       passivePerSecond: 1,
       perTurretPerSecond: 1,
+      killBounty: { mech: 50, dreadnought: 40, hovertank: 10 },
     },
     units: {
       hovertank: {
@@ -236,6 +239,7 @@ function buildTest(T: number): Balance {
       spawnProtectionTicks: 1 * T,
     },
     economy: {
+      ...base.economy,
       startingCredits: 500,
       passivePerSecond: 10,
       perTurretPerSecond: 10,
