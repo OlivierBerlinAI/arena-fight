@@ -29,8 +29,12 @@ different game server explicitly, use `http://<host-ip>:5273/?server=<ip>:8080`.
 
 ## How to play
 
-The controls are **keyboard-only** — the mouse is not used during a match.
-A **CONTROLS** button (top-right) opens an overlay with this list at any time.
+Pick a control scheme with the **CONTROLS** toggle on the start screen — it is
+remembered and defaults to **touch** on phones/tablets and **keyboard** on
+desktop. A **CONTROLS** button (top-right) opens an overlay with the matching
+list at any time (and lets you switch schemes live).
+
+### Keyboard (desktop) — the mouse is not used during a match
 
 | Control | Action |
 | --- | --- |
@@ -42,6 +46,17 @@ A **CONTROLS** button (top-right) opens an overlay with this list at any time.
 | `1` / `2` | Build **Hovertank** (50¢, 5 s) / **Dreadnought** (200¢, 15 s) |
 | ♪ button | Mute / unmute sound (HUD top bar) |
 | `F3` | Debug overlay (fps, ping, ticks, snapshot age, entity counts) |
+
+### Touch (phone/tablet) — no keyboard or mouse, hold the device in landscape
+
+| Control | Action |
+| --- | --- |
+| Left thumbstick | Drive (push up / down) and steer (tilt left / right) — a floating joystick that appears where you press |
+| **FIRE** button | Hold for primary fire (gatling / laser) |
+| **RKT** button | Hold for rockets (walker only — greyed out while hovering) |
+| **⇄** button | Transform walker ⇄ hover |
+| **HOVERTANK** / **DREADNOUGHT** | Tap to build |
+| ♪ button | Mute / unmute sound (HUD top bar) |
 
 - **Sound:** all audio is synthesised procedurally at runtime (retro 8-bit /
   chiptune — NES-style pulse waves plus a filtered noise channel), so there are

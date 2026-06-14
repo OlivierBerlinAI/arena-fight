@@ -24,6 +24,15 @@
             />
             <button id="name-submit" data-testid="name-submit" class="btn primary">ENTER</button>
           </div>
+          <div id="name-control-toggle" class="control-toggle" data-testid="control-toggle">
+            <span class="control-toggle-label">CONTROLS</span>
+            <button type="button" class="seg" data-scheme="keyboard" data-testid="scheme-keyboard">
+              &#9000; KEYBOARD
+            </button>
+            <button type="button" class="seg" data-scheme="touch" data-testid="scheme-touch">
+              &#9995; TOUCH
+            </button>
+          </div>
           <p id="name-status" class="status-line"></p>
         </div>
       </div>
@@ -150,6 +159,9 @@
           <!-- debug overlay -->
           <pre id="debug-overlay"></pre>
         </div>
+
+        <!-- touch-only: shown when the device is held in portrait -->
+        <div id="rotate-hint">&#8635;&nbsp;&nbsp;Rotate your device to landscape to play</div>
       </div>
 
       <!-- ============ Result ============ -->
@@ -181,7 +193,12 @@
       <div id="controls-overlay" class="overlay" data-testid="controls-overlay">
         <div class="panel center-panel">
           <h2>CONTROLS</h2>
-          <table class="controls-table">
+          <div id="controls-scheme-toggle" class="control-toggle">
+            <span class="control-toggle-label">SCHEME</span>
+            <button type="button" class="seg" data-scheme="keyboard">&#9000; KEYBOARD</button>
+            <button type="button" class="seg" data-scheme="touch">&#9995; TOUCH</button>
+          </div>
+          <table class="controls-table kb-only">
             <tr><td><kbd>W</kbd> / <kbd>S</kbd></td><td>Drive forward / reverse</td></tr>
             <tr><td><kbd>A</kbd> / <kbd>D</kbd></td><td>Turn left / right (the camera follows)</td></tr>
             <tr><td><kbd>M</kbd></td><td>Fire primary &mdash; gatling, or laser while hovering</td></tr>
@@ -191,7 +208,15 @@
             <tr><td>&#9834; button</td><td>Mute / unmute sound</td></tr>
             <tr><td><kbd>F3</kbd></td><td>Debug overlay</td></tr>
           </table>
-          <p class="dim">The mouse is not used during the match.</p>
+          <table class="controls-table touch-only">
+            <tr><td>Left stick</td><td>Drive (push up / down) &amp; steer (tilt left / right)</td></tr>
+            <tr><td><kbd>FIRE</kbd></td><td>Hold &mdash; gatling, or laser while hovering</td></tr>
+            <tr><td><kbd>RKT</kbd></td><td>Hold to fire rockets (walker only)</td></tr>
+            <tr><td><kbd>&#8644;</kbd></td><td>Transform walker &harr; hover</td></tr>
+            <tr><td>HOVERTANK / DREADNOUGHT</td><td>Tap to build</td></tr>
+            <tr><td>&#9834; button</td><td>Mute / unmute sound</td></tr>
+          </table>
+          <p class="dim kb-only">The mouse is not used during the match.</p>
           <button id="controls-close" data-testid="controls-close" class="btn primary">CLOSE</button>
         </div>
       </div>

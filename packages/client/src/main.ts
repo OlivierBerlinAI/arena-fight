@@ -16,6 +16,8 @@ import { RoomScreen } from './screens/room';
 import { ResultScreen } from './screens/result';
 import { MatchController } from './game/match';
 import { SoundEngine } from './game/audio';
+import { ControlSchemeToggle, getControlScheme, onControlSchemeChange } from './controls';
+import type { ControlScheme } from './controls';
 
 installGameHook();
 
@@ -79,12 +81,28 @@ class App {
   private readonly controlsBtn = byId<HTMLButtonElement>('controls-btn');
   private readonly controlsOverlay = byId('controls-overlay');
 
+  private readonly controlsToggle = new ControlSchemeToggle(byId('controls-scheme-toggle'));
+
   constructor() {
     this.nameScreen.focus();
     this.wireControlsHelp();
+    this.wireControlScheme();
     // Begin the menu theme right away; it stays silent until the first gesture
     // unlocks the audio context, then fades in.
     this.updateMusic(this.phase);
+  }
+
+  /**
+   * Keep the document in sync with the chosen scheme: a `touch-active` body
+   * class rearranges the HUD for thumbs, and a live match swaps its controls.
+   */
+  private wireControlScheme(): void {
+    const apply = (scheme: ControlScheme): void => {
+      document.body.classList.toggle('touch-active', scheme === 'touch');
+      this.match?.setControlScheme(scheme);
+    };
+    apply(getControlScheme());
+    onControlSchemeChange(apply);
   }
 
   /** Top-right button → modal overlay listing the keyboard shortcuts. */

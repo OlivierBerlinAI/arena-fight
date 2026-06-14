@@ -15,6 +15,8 @@ import type {
 import type { Net } from '../net';
 import { gameHook } from '../testhook';
 import type { GameEntityInfo } from '../testhook';
+import { getControlScheme } from '../controls';
+import type { ControlScheme } from '../controls';
 import { GameRenderer } from './renderer';
 import { EntityManager } from './entities';
 import { SnapshotBuffer } from './interpolation';
@@ -80,12 +82,15 @@ export class MatchController {
       this.net.send({ type: 'build', unit });
     };
     this.hud = new Hud(this.balance, cfg.playerIndex, cfg.tickRate, sendBuild);
-    this.input = new InputManager({
-      onBuild: sendBuild,
-      onToggleDebug: () => this.debug.toggle(),
-      onTransform: (mode) => this.sound.transform(mode === 'hover'),
-      sendInput: (input) => this.net.send({ type: 'input', ...input }),
-    });
+    this.input = new InputManager(
+      {
+        onBuild: sendBuild,
+        onToggleDebug: () => this.debug.toggle(),
+        onTransform: (mode) => this.sound.transform(mode === 'hover'),
+        sendInput: (input) => this.net.send({ type: 'input', ...input }),
+      },
+      getControlScheme()
+    );
     this.input.setPlaying(true);
 
     this.musicBtn.addEventListener('click', this.onMusicClick);
@@ -125,6 +130,11 @@ export class MatchController {
     this.ended = true;
     this.input.setPlaying(false);
     gameHook.winner = winner;
+  }
+
+  /** Switch the live control scheme (keyboard ⇄ touch) mid-match. */
+  setControlScheme(scheme: ControlScheme): void {
+    this.input.setScheme(scheme);
   }
 
   // ----------------------------------------------------------- frame loop
