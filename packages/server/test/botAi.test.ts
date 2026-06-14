@@ -45,6 +45,27 @@ describe('bot ai', () => {
     expect(Math.hypot(input.mx, input.mz)).toBeGreaterThan(0.5); // moving somewhere
   });
 
+  it('lobs rockets at a target in range (normal/hard) but not on easy', () => {
+    const sim = new GameSimulation({ seed: 6, balance: TEST_BALANCE });
+    for (let i = 0; i < sim.balance.mech.spawnProtectionTicks + 1; i++) sim.tick();
+    sim.state.mechs[1].pos = { x: 0, z: 0 };
+    sim.state.mechs[0].pos = { x: 8, z: 0 }; // enemy 8 units away — within rocket range
+    const hard = chooseInput(sim.snapshot(), 1, sim.balance, BOT_TUNING.hard);
+    expect(hard.alt).toBe(true);
+    expect(hard.mode).toBe('walker'); // walker so rockets are usable
+    const easy = chooseInput(sim.snapshot(), 1, sim.balance, BOT_TUNING.easy);
+    expect(easy.alt).toBe(false);
+  });
+
+  it('glides in hover toward a distant goal when nothing is near (normal/hard only)', () => {
+    const sim = new GameSimulation({ seed: 7, balance: TEST_BALANCE });
+    sim.state.mechs[0].pos = { x: 200, z: 200 }; // enemy far → long travel to the objective
+    const hard = chooseInput(sim.snapshot(), 1, sim.balance, BOT_TUNING.hard);
+    expect(hard.mode).toBe('hover');
+    const easy = chooseInput(sim.snapshot(), 1, sim.balance, BOT_TUNING.easy);
+    expect(easy.mode).toBe('walker'); // easy never hovers
+  });
+
   it('navigates its mech out of the walled base instead of into a wall', () => {
     const sim = new GameSimulation({ seed: 5, balance: TEST_BALANCE });
     for (let i = 0; i < sim.balance.mech.spawnProtectionTicks + 1; i++) sim.tick();

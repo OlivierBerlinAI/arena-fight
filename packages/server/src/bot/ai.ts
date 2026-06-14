@@ -29,17 +29,25 @@ export interface BotTuning {
   aggression: number;
   /** whether it bothers capturing turrets for economy */
   capturesTurrets: boolean;
+  /** fire splash rockets at targets in range (walker only) */
+  usesRockets: boolean;
+  /** glide in hover mode toward distant goals when there's nothing to fight */
+  usesHover: boolean;
 }
 
 export const BOT_TUNING: Record<BotDifficulty, BotTuning> = {
-  easy: { decideEveryMs: 450, buildEveryMs: 3500, aimError: 0.28, reactRange: 0.7, aggression: 0.3, capturesTurrets: false },
-  normal: { decideEveryMs: 180, buildEveryMs: 1700, aimError: 0.09, reactRange: 0.9, aggression: 0.6, capturesTurrets: true },
-  hard: { decideEveryMs: 70, buildEveryMs: 800, aimError: 0.0, reactRange: 1.0, aggression: 0.95, capturesTurrets: true },
+  easy: { decideEveryMs: 450, buildEveryMs: 3500, aimError: 0.28, reactRange: 0.7, aggression: 0.3, capturesTurrets: false, usesRockets: false, usesHover: false },
+  normal: { decideEveryMs: 180, buildEveryMs: 1700, aimError: 0.09, reactRange: 0.9, aggression: 0.6, capturesTurrets: true, usesRockets: true, usesHover: true },
+  hard: { decideEveryMs: 70, buildEveryMs: 800, aimError: 0.0, reactRange: 1.0, aggression: 0.95, capturesTurrets: true, usesRockets: true, usesHover: true },
 };
 
 /** Nominal mech weapon engage range (gatling/laser have no hard range; pick a feel). */
 const ENGAGE_RANGE = 18;
 const ARRIVE_DIST = 1.6;
+/** Lob splash rockets at a target within this range (slightly past gatling reach). */
+const ROCKET_RANGE = 26;
+/** Switch to hover (faster) when the goal is at least this far and nothing to fight. */
+const HOVER_TRAVEL_DIST = 26;
 
 interface Pt {
   x: number;
@@ -163,6 +171,7 @@ export function chooseInput(snap: Snapshot, me: PlayerIndex, _balance: Balance, 
 
   // Route the straight-line goal around walls (out of our base, along a lane).
   const steer = navTo(mech, goal, me);
+  const goalDist = Math.hypot(goal.x - mech.x, goal.z - mech.z);
   let mx = steer.x - mech.x;
   let mz = steer.z - mech.z;
   const gd = Math.hypot(mx, mz);
@@ -190,7 +199,15 @@ export function chooseInput(snap: Snapshot, me: PlayerIndex, _balance: Balance, 
     aimZ = mech.z + mz * 10;
   }
 
-  return { mx, mz, aimX, aimZ, fire: inRange && !mech.overheated, alt: false, mode: 'walker' };
+  // Glide in hover toward a distant goal when there's no one in range to fight;
+  // drop back to walker the moment a target is engageable so rockets are usable.
+  const mode: 'walker' | 'hover' =
+    tuning.usesHover && !inRange && goalDist > HOVER_TRAVEL_DIST ? 'hover' : 'walker';
+  // Rockets: splash secondary, walker-only. Lob them at a target within range.
+  const rocketTarget = target !== null && targetD2 <= ROCKET_RANGE * ROCKET_RANGE;
+  const alt = tuning.usesRockets && mode === 'walker' && rocketTarget;
+
+  return { mx, mz, aimX, aimZ, fire: inRange && !mech.overheated, alt, mode };
 }
 
 /** Decide whether/what to build right now (the worker throttles the cadence). */

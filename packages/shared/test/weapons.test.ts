@@ -83,6 +83,32 @@ describe('rockets', () => {
     expect(spawnTicks[4] - spawnTicks[3]).toBe(r.cooldownTicks);
   });
 
+  it('a friendly unit body-blocks the shooter — no friendly fire, enemy shielded', () => {
+    // A friendly unit parked in the line of fire eats every shot: the enemy
+    // behind it takes nothing, and the friendly takes no damage either.
+    const blocked = new GameSimulation({ seed: 12, balance: TEST_BALANCE });
+    tickN(blocked, blocked.balance.mech.spawnProtectionTicks + 1);
+    teleportMech(blocked, 0, { x: 0, z: 0 });
+    teleportMech(blocked, 1, { x: 16, z: 0 }); // victim, beyond the blocker's own range
+    const [shield] = deployUnits(blocked, 0, 'hovertank', 1);
+    const shieldHp = shield.hp;
+    const fire = makeInput({ fire: true, aimX: 16, aimZ: 0 });
+    for (let i = 0; i < 40; i++) {
+      shield.pos = { x: 4, z: 0 }; // keep it parked between shooter and victim
+      blocked.tick([fire, null]);
+    }
+    expect(blocked.state.mechs[1].hp).toBe(blocked.balance.mech.maxHp); // fully shielded
+    expect(shield.hp).toBe(shieldHp); // and no friendly fire on the blocker
+
+    // Control: same fire, no blocker → the enemy clearly takes damage.
+    const open = new GameSimulation({ seed: 12, balance: TEST_BALANCE });
+    tickN(open, open.balance.mech.spawnProtectionTicks + 1);
+    teleportMech(open, 0, { x: 0, z: 0 });
+    teleportMech(open, 1, { x: 16, z: 0 });
+    tickN(open, 40, [fire, null]);
+    expect(open.state.mechs[1].hp).toBeLessThan(open.balance.mech.maxHp);
+  });
+
   it('right-fire spawns exactly one rocket per press', () => {
     const sim = new GameSimulation({ seed: 10 });
     teleportMech(sim, 0, { x: 0, z: 0 });

@@ -13,6 +13,7 @@ import type {
 
 type HitTarget =
   | { kind: 'wall' }
+  | { kind: 'block' } // a friendly unit body-blocks the shot (consumed, no friendly fire)
   | { kind: 'mech'; player: PlayerIndex }
   | { kind: 'unit'; unit: UnitState }
   | { kind: 'turret'; turret: TurretState };
@@ -51,11 +52,12 @@ export function stepProjectiles(state: SimState, balance: Balance, events: SimEv
       }
     }
     for (const unit of state.units) {
-      if (unit.owner === proj.owner || deadUnits.has(unit.id)) continue;
+      if (deadUnits.has(unit.id)) continue;
       const t = segmentCircleHit(from, to, unit.pos, balance.units[unit.type].radius);
       if (t !== null && t < bestT) {
         bestT = t;
-        target = { kind: 'unit', unit };
+        // A friendly unit bodies the shot (no friendly fire); an enemy unit takes it.
+        target = unit.owner === proj.owner ? { kind: 'block' } : { kind: 'unit', unit };
       }
     }
     for (const turret of state.turrets) {
