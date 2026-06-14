@@ -197,7 +197,8 @@ function damageTurret(
   by: Ownership,
   events: SimEvent[]
 ): void {
-  if (!turret.alive) return;
+  // Neutral turrets are indestructible — they can only be captured, not shot down.
+  if (!turret.alive || turret.owner === -1) return;
   turret.hp -= amount;
   if (turret.hp > 0) return;
   const previousOwner = turret.owner;

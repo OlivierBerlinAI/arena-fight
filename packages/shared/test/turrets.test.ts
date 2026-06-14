@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { GameSimulation } from '@mech-arena-fight/shared';
 import {
   driveToward,
+  makeInput,
   projectileTracker,
   runUntilEvent,
   teleportMech,
@@ -146,5 +147,20 @@ describe('turret capture', () => {
       shots += fresh().length;
     }
     expect(shots).toBeGreaterThan(0);
+  });
+
+  it('a neutral turret cannot be destroyed by fire (only captured)', () => {
+    const sim = new GameSimulation({ seed: 31 });
+    tickN(sim, sim.balance.mech.spawnProtectionTicks + 1);
+    const turret = sim.state.turrets[0]; // (-52, 0), still neutral
+    expect(turret.owner).toBe(-1);
+    teleportMech(sim, 0, { x: -45, z: 0 }); // right next to it
+    const fullHp = turret.hp;
+    // Hose it with the gatling, aiming straight at the tower.
+    const firing = makeInput({ fire: true, aimX: -52, aimZ: 0 });
+    for (let i = 0; i < 80; i++) sim.tick([firing, null]);
+    expect(turret.hp).toBe(fullHp); // took no damage at all
+    expect(turret.alive).toBe(true);
+    expect(turret.owner).toBe(-1);
   });
 });
