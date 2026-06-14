@@ -263,6 +263,8 @@ interface UnitView {
   hpBar: HpBar;
   type: UnitType;
   maxHp: number;
+  /** Heavy Tank only: the rotating turret+cannon, aimed via turretYaw. */
+  turret?: THREE.Group;
 }
 
 /** Hovertank: a flat wedge. Dreadnought: a bulky multi-part hull. */
@@ -302,13 +304,19 @@ function buildUnit(owner: PlayerIndex, type: UnitType, maxHp: number): UnitView 
   const upper = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.7, 1.6), dark);
   upper.position.set(-0.2, 1.4, 0);
   group.add(upper);
+  // The turret + cannon live in their own group so they can rotate (aim)
+  // independently of the hull. The group pivots about the turret's vertical
+  // axis (~x=0.3), so the child meshes sit at their positions minus that pivot.
+  const turretGroup = new THREE.Group();
+  turretGroup.position.set(0.3, 0, 0);
   const turret = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.55, 0.9), body);
-  turret.position.set(0.5, 1.95, 0);
-  group.add(turret);
+  turret.position.set(0.2, 1.95, 0);
+  turretGroup.add(turret);
   const cannon = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 2.0, 8), dark);
   cannon.rotation.z = Math.PI / 2;
-  cannon.position.set(1.6, 1.95, 0);
-  group.add(cannon);
+  cannon.position.set(1.3, 1.95, 0);
+  turretGroup.add(cannon);
+  group.add(turretGroup);
   for (const side of [-1, 1]) {
     const pod = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 0.45), accent);
     pod.position.set(-0.3, 1.0, side * 1.35);
@@ -321,7 +329,7 @@ function buildUnit(owner: PlayerIndex, type: UnitType, maxHp: number): UnitView 
   const hpBar = new HpBar(2.4, 0.16);
   hpBar.group.position.y = 2.9;
   group.add(hpBar.group);
-  return { group, hpBar, type, maxHp };
+  return { group, hpBar, type, maxHp, turret: turretGroup };
 }
 
 const PROJECTILE_STYLE: Record<ProjectileSnap['kind'], { radius: number; y: number }> = {
@@ -466,6 +474,8 @@ export class EntityManager {
       const hover = u.type === 'hovertank' ? 0.18 : 0.05;
       view.group.position.set(u.x, hover, u.z);
       view.group.rotation.y = -u.yaw;
+      // Heavy Tank: aim the turret relative to the (travel-facing) hull.
+      if (view.turret) view.turret.rotation.y = u.yaw - u.turretYaw;
       view.hpBar.set(u.hp / view.maxHp);
     }
     for (const [id, view] of this.units) {

@@ -71,6 +71,8 @@ export interface UnitState {
   type: UnitType;
   pos: Vec2;
   yaw: number;
+  /** facing of the aiming turret (Heavy Tank aims this independently of body) */
+  turretYaw: number;
   hp: number;
   lane: LaneId;
   waypointIndex: number;

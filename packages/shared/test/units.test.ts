@@ -130,4 +130,25 @@ describe('unit AI', () => {
     expect(ownUnit.hp).toBeLessThan(unitHp); // the robot got shot...
     expect(sim.state.mechs[0].hp).toBe(mechHpBefore); // ...the closer mech did not
   });
+
+  it('the Heavy Tank aims with its turret while its body holds its facing', () => {
+    const sim = new GameSimulation({ seed: 7, balance: TEST_BALANCE });
+    const [heavy] = deployUnits(sim, 0, 'dreadnought', 1);
+    // Park it pointing along +x; put the enemy mech 90° off (due +z), in range.
+    heavy.pos = { x: 0, z: 0 };
+    heavy.yaw = 0;
+    heavy.turretYaw = 0;
+    teleportMech(sim, 1, { x: 0, z: 6 }); // bearing ≈ +π/2, within range (13)
+
+    const fresh = projectileTracker(sim, 'unitHeavy');
+    let shots = 0;
+    for (let i = 0; i < 60; i++) {
+      sim.tick();
+      shots += fresh().length;
+    }
+
+    expect(heavy.yaw).toBeCloseTo(0, 6); // body never rotated to aim
+    expect(heavy.turretYaw).toBeGreaterThan(1.3); // turret swung toward the target (~π/2)
+    expect(shots).toBeGreaterThan(0); // and it fired once lined up
+  });
 });

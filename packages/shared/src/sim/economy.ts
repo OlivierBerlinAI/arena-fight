@@ -82,6 +82,7 @@ function spawnUnit(
     type,
     pos: { x: base.unitSpawn.x + jitter, z: base.unitSpawn.z + jitter * 0.5 },
     yaw: owner === 0 ? Math.PI / 4 : -Math.PI * 0.75,
+    turretYaw: owner === 0 ? Math.PI / 4 : -Math.PI * 0.75,
     hp: balance.units[type].hp,
     lane: player.nextLane,
     waypointIndex: 0,

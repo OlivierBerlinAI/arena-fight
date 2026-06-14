@@ -143,6 +143,7 @@ export class GameSimulation {
         x: round3(u.pos.x),
         z: round3(u.pos.z),
         yaw: round3(u.yaw),
+        turretYaw: round3(u.turretYaw),
         hp: Math.ceil(u.hp),
       })),
       turrets: state.turrets.map((t) => ({

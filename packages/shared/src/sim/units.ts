@@ -31,15 +31,25 @@ export function stepUnits(state: SimState, balance: Balance): void {
       unit.targetKey = target.key;
       const dx = target.pos.x - unit.pos.x;
       const dz = target.pos.z - unit.pos.z;
-      // Rotate to face the target before firing instead of snapping onto it.
       const desired = Math.atan2(dz, dx);
-      unit.yaw = rotateToward(unit.yaw, desired, ub.turnRate * DT);
-      const aligned = Math.abs(angleDelta(unit.yaw, desired)) <= AIM_TOLERANCE_RAD;
+      // Rotate to face the target before firing instead of snapping onto it.
+      // The Heavy keeps its body still and only swings its turret (which turns
+      // twice as fast as the Tank's body); the Tank turns its whole body.
+      let fireYaw: number;
+      if (unit.type === 'dreadnought') {
+        unit.turretYaw = rotateToward(unit.turretYaw, desired, balance.units.hovertank.turnRate * 2 * DT);
+        fireYaw = unit.turretYaw;
+      } else {
+        unit.yaw = rotateToward(unit.yaw, desired, ub.turnRate * DT);
+        unit.turretYaw = unit.yaw;
+        fireYaw = unit.yaw;
+      }
+      const aligned = Math.abs(angleDelta(fireYaw, desired)) <= AIM_TOLERANCE_RAD;
       if (aligned && state.tick >= unit.fireReadyAtTick) {
         spawnProjectile(state, {
           owner: unit.owner,
           kind: unit.type === 'dreadnought' ? 'unitHeavy' : 'unitLight',
-          yaw: unit.yaw,
+          yaw: fireYaw,
           origin: unit,
           speed: ub.projectileSpeed,
           damage: ub.damage,
@@ -56,6 +66,12 @@ export function stepUnits(state: SimState, balance: Balance): void {
     }
 
     unit.targetKey = null;
+    // No target: swing the turret back to point forward (Tank's turret == body).
+    if (unit.type === 'dreadnought') {
+      unit.turretYaw = rotateToward(unit.turretYaw, unit.yaw, balance.units.hovertank.turnRate * 2 * DT);
+    } else {
+      unit.turretYaw = unit.yaw;
+    }
     const waypoints = laneWaypoints(unit.owner, unit.lane);
     const wp = waypoints[Math.min(unit.waypointIndex, waypoints.length - 1)];
     const dx = wp.x - unit.pos.x;

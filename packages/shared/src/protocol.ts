@@ -58,6 +58,8 @@ export interface UnitSnap {
   x: number;
   z: number;
   yaw: number;
+  /** facing of the aiming turret (Heavy Tank); equals `yaw` for the Tank */
+  turretYaw: number;
   hp: number;
 }
 

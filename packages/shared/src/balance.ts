@@ -201,7 +201,7 @@ function buildDefault(T: number): Balance {
         range: 13,
         fireIntervalTicks: Math.round(1.6 * T),
         projectileSpeed: 30,
-        turnRate: 1.6, // heavy: slow to bring its guns to bear
+        turnRate: 1.6, // body/travel turn rate; its turret aims separately (2x the Tank)
       },
     },
     unitCap: 8,
