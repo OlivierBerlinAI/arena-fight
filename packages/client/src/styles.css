@@ -904,9 +904,10 @@ body.touch-active #minimap {
   width: 112px;
   height: 112px;
 }
+/* Touch mode shows every control on-screen at all times, so the CONTROLS help
+ * overlay (and the button that opens it) is redundant — hide it. */
 body.touch-active .controls-btn {
-  top: 134px; /* below the relocated minimap */
-  right: 12px;
+  display: none;
 }
 body.touch-active #hud-mech {
   top: 52px;
