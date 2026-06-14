@@ -24,14 +24,18 @@
             />
             <button id="name-submit" data-testid="name-submit" class="btn primary">ENTER</button>
           </div>
-          <div id="name-control-toggle" class="control-toggle" data-testid="control-toggle">
-            <span class="control-toggle-label">CONTROLS</span>
-            <button type="button" class="seg" data-scheme="keyboard" data-testid="scheme-keyboard">
-              &#9000; KEYBOARD
-            </button>
-            <button type="button" class="seg" data-scheme="touch" data-testid="scheme-touch">
-              &#9995; TOUCH
-            </button>
+          <div id="name-control-toggle" class="control-toggle scheme-prompt" data-testid="control-toggle">
+            <span class="control-toggle-label">CHOOSE YOUR CONTROLS</span>
+            <div class="scheme-options">
+              <button type="button" class="seg" data-scheme="keyboard" data-testid="scheme-keyboard">
+                <span class="seg-title">&#9000; KEYBOARD</span>
+                <span class="seg-hint">WASD to move &middot; M / N or mouse to fire</span>
+              </button>
+              <button type="button" class="seg" data-scheme="touch" data-testid="scheme-touch">
+                <span class="seg-title">&#9995; TOUCH</span>
+                <span class="seg-hint">on-screen joystick &amp; fire buttons</span>
+              </button>
+            </div>
           </div>
           <p id="name-status" class="status-line"></p>
         </div>
@@ -216,7 +220,7 @@
             <tr><td>HOVERTANK / DREADNOUGHT</td><td>Tap to build</td></tr>
             <tr><td>&#9834; button</td><td>Mute / unmute sound</td></tr>
           </table>
-          <p class="dim kb-only">The mouse is not used during the match.</p>
+          <p class="dim kb-only">Tip: the mouse buttons also fire &mdash; left-click for primary, right-click for rockets.</p>
           <button id="controls-close" data-testid="controls-close" class="btn primary">CLOSE</button>
         </div>
       </div>
