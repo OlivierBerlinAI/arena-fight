@@ -37,6 +37,8 @@ function fmtEvent(e: SimEvent, names: readonly string[]): string {
       return `${fmtPlayer(names, e.player)} build ${e.unit} rejected (${e.reason})`;
     case 'turretCaptured':
       return `turret ${e.turretId} captured by ${fmtPlayer(names, e.player)}`;
+    case 'turretNeutralized':
+      return `turret ${e.turretId} neutralized by ${fmtPlayer(names, e.byPlayer)}`;
     case 'turretDestroyed':
       return `turret ${e.turretId} destroyed by ${fmtPlayer(names, e.byPlayer)}`;
     case 'turretRespawned':

@@ -54,22 +54,30 @@ describe('turret capture', () => {
     expect(sim.state.turrets[0].owner).toBe(-1);
   });
 
-  it('an enemy cannot convert an owned turret by standing on its pad', () => {
+  it('enemy drains an owned turret to neutral, then captures it', () => {
     const sim = new GameSimulation({ seed: 24 });
     const captureTicks = sim.balance.turret.captureTicks;
     teleportMech(sim, 0, PAD_SPOT);
     runUntilEvent(sim, 'turretCaptured', captureTicks + 5);
     expect(sim.state.turrets[0].owner).toBe(0);
 
-    // Player 0 leaves; player 1 parks on the now player-0-owned pad and waits.
+    // Player 0 leaves; player 1 stands on the now-owned pad.
     teleportMech(sim, 0, { x: -53, z: -42 });
     teleportMech(sim, 1, PAD_SPOT);
 
-    const events = tickN(sim, captureTicks * 3);
-    // No conversion of any kind: the turret stays fully owned by player 0.
-    expect(events.some((e) => e.type === 'turretCaptured')).toBe(false);
-    expect(sim.state.turrets[0].owner).toBe(0);
-    expect(sim.state.turrets[0].capProgress).toBe(captureTicks);
+    const drained = runUntilEvent(sim, 'turretNeutralized', captureTicks + 10);
+    expect(drained.event.turretId).toBe(0);
+    expect(drained.event.byPlayer).toBe(1);
+    expect(drained.ticks).toBe(captureTicks); // drains 1/tick from full hold
+    expect(sim.state.turrets[0].owner).toBe(-1);
+
+    const captured = runUntilEvent(sim, 'turretCaptured', captureTicks + 10);
+    expect(captured.event.player).toBe(1);
+    expect(captured.ticks).toBe(captureTicks);
+    expect(sim.state.turrets[0].owner).toBe(1);
+    // The defending turret shot at the capturing mech but could not kill it in time.
+    expect(sim.state.mechs[1].alive).toBe(true);
+    expect(sim.state.mechs[1].hp).toBeLessThan(sim.balance.mech.maxHp);
   });
 
   it('both mechs on the pad pauses capture progress', () => {
@@ -82,7 +90,7 @@ describe('turret capture', () => {
     const contested = tickN(sim, 30);
     expect(sim.state.turrets[0].capProgress).toBe(45); // frozen
     expect(sim.state.turrets[0].capOwner).toBe(0);
-    expect(contested.some((e) => e.type === 'turretCaptured')).toBe(false);
+    expect(contested.some((e) => e.type === 'turretCaptured' || e.type === 'turretNeutralized')).toBe(false);
 
     teleportMech(sim, 1, { x: 0, z: 0 }); // contester leaves, progress resumes
     const { ticks } = runUntilEvent(sim, 'turretCaptured', 50);

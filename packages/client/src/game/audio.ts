@@ -430,6 +430,10 @@ export class SoundEngine {
         if (ev.player === me) this.arp([523, 659, 784, 1047], 0.06, { wave: this.pulse25 ?? 'square', dur: 0.1, vol: 0.18 });
         else this.arp([392, 311], 0.08, { wave: 'square', dur: 0.12, vol: 0.14 });
         break;
+      case 'turretNeutralized':
+        if (ev.byPlayer === me) this.arp([659, 784], 0.06, { wave: this.pulse25 ?? 'square', dur: 0.09, vol: 0.14 });
+        else this.arp([440, 330], 0.07, { wave: 'square', dur: 0.1, vol: 0.13 });
+        break;
       case 'turretDestroyed':
         this.noise({ dur: 0.34, vol: 0.3, from: 1500, to: 60 });
         this.voice(1200, { wave: 'square', dur: 0.05, vol: 0.12, when: 0.02 }); // metallic clang

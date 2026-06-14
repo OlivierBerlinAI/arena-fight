@@ -460,6 +460,14 @@ export class Room {
             player: e.player,
           });
           break;
+        case 'turretNeutralized':
+          this.logger.info('turret neutralized', {
+            roomId: this.id,
+            tick,
+            turretId: e.turretId,
+            byPlayer: e.byPlayer,
+          });
+          break;
         case 'turretDestroyed':
           this.logger.info('turret destroyed', {
             roomId: this.id,

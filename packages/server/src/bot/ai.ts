@@ -109,13 +109,13 @@ function navTo(mech: Pt, goal: Pt, me: PlayerIndex): Pt {
 
 const idleInput = (): PlayerInput => ({ mx: 0, mz: 0, aimX: 0, aimZ: 0, fire: false, alt: false, mode: 'walker' });
 
-/** Pick the nearest capturable (neutral) turret worth driving to. */
+/** Pick the nearest capturable turret (neutral or enemy-owned) worth driving to. */
 function turretGoal(snap: Snapshot, me: PlayerIndex, mech: Pt, tuning: BotTuning): Pt | null {
   if (!tuning.capturesTurrets) return null;
   let best: Pt | null = null;
   let bestD = 40 * 40; // only bother with reasonably near turrets
   for (const t of snap.turrets) {
-    if (!t.alive || t.owner !== -1) continue; // only neutral turrets are capturable
+    if (!t.alive || t.owner === me) continue; // already ours
     const dd = d2(mech, t);
     if (dd < bestD) {
       bestD = dd;
