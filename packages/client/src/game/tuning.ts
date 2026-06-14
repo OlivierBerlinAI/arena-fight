@@ -23,6 +23,6 @@ export interface TurnTune {
 }
 
 export const TURN: Record<'walker' | 'hover', TurnTune> = {
-  walker: { accel: 42, friction: 14, max: 1.76 },
-  hover: { accel: 14, friction: 2.6, max: 1.6 },
+  walker: { accel: 7, friction: 5, max: 2.5 },
+  hover: { accel: 14, friction: 2.6, max: 1.3 },
 };

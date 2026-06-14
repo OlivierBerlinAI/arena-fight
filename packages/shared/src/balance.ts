@@ -133,7 +133,7 @@ function buildDefault(T: number): Balance {
       maxSpeed: 11,
       friction: 5,
       hoverAccel: 58,
-      hoverMaxSpeed: 16, // glides noticeably faster than the walker's 11
+      hoverMaxSpeed: 20, // glides noticeably faster than the walker's 11
       hoverFriction: 2.6, // low drag → drifting/gliding feel
       respawnTicks: 4 * T,
       spawnProtectionTicks: 2 * T,
