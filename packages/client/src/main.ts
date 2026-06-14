@@ -219,8 +219,9 @@ class App {
     this.countdownOverlay.classList.toggle('active', phase === 'countdown');
     this.resultOverlay.classList.toggle('active', phase === 'ended');
 
-    // The CONTROLS help button is in-match only — hide it on the start + lobby screens.
-    this.controlsBtn.classList.toggle('screen-hidden', phase === 'name' || phase === 'lobby');
+    // The CONTROLS help button is in-match only — hidden on the name, lobby,
+    // waiting-room and countdown screens.
+    this.controlsBtn.classList.toggle('screen-hidden', phase !== 'playing' && phase !== 'ended');
 
     this.updateMusic(phase);
   }
