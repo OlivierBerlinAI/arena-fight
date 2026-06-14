@@ -287,14 +287,20 @@ function buildUnit(owner: PlayerIndex, type: UnitType, maxHp: number): UnitView 
     const fin = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.3, 0.12), accent);
     fin.position.set(-0.7, 0.68, 0);
     group.add(fin);
+    // Swiveling turret (cap + gun) in a sub-group, aimed independently via turretYaw.
+    const turretGroup = new THREE.Group();
+    const cap = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.24, 0.6), body);
+    cap.position.set(0, 0.66, 0);
+    turretGroup.add(cap);
     const gun = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.9, 6), accent);
     gun.rotation.z = Math.PI / 2;
-    gun.position.set(0.8, 0.62, 0);
-    group.add(gun);
+    gun.position.set(0.5, 0.66, 0);
+    turretGroup.add(gun);
+    group.add(turretGroup);
     const hpBar = new HpBar(1.5, 0.14);
     hpBar.group.position.y = 1.5;
     group.add(hpBar.group);
-    return { group, hpBar, type, maxHp };
+    return { group, hpBar, type, maxHp, turret: turretGroup };
   }
 
   // dreadnought

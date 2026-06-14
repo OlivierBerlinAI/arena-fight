@@ -26,30 +26,24 @@ export function stepUnits(state: SimState, balance: Balance): void {
   const DT = 1 / balance.tickRate;
   for (const unit of state.units) {
     const ub = balance.units[unit.type];
+    // Both tanks keep their hull facing the travel direction and swing only a
+    // turret to aim; the Heavy's turret turns twice as fast as the Tank's.
+    const turretRate =
+      unit.type === 'dreadnought' ? balance.units.hovertank.turnRate * 2 : balance.units.hovertank.turnRate;
     const target = acquireTarget(unit, state, ub.range);
     if (target) {
       unit.targetKey = target.key;
       const dx = target.pos.x - unit.pos.x;
       const dz = target.pos.z - unit.pos.z;
       const desired = Math.atan2(dz, dx);
-      // Rotate to face the target before firing instead of snapping onto it.
-      // The Heavy keeps its body still and only swings its turret (which turns
-      // twice as fast as the Tank's body); the Tank turns its whole body.
-      let fireYaw: number;
-      if (unit.type === 'dreadnought') {
-        unit.turretYaw = rotateToward(unit.turretYaw, desired, balance.units.hovertank.turnRate * 2 * DT);
-        fireYaw = unit.turretYaw;
-      } else {
-        unit.yaw = rotateToward(unit.yaw, desired, ub.turnRate * DT);
-        unit.turretYaw = unit.yaw;
-        fireYaw = unit.yaw;
-      }
-      const aligned = Math.abs(angleDelta(fireYaw, desired)) <= AIM_TOLERANCE_RAD;
+      // Rotate the turret toward the target before firing instead of snapping.
+      unit.turretYaw = rotateToward(unit.turretYaw, desired, turretRate * DT);
+      const aligned = Math.abs(angleDelta(unit.turretYaw, desired)) <= AIM_TOLERANCE_RAD;
       if (aligned && state.tick >= unit.fireReadyAtTick) {
         spawnProjectile(state, {
           owner: unit.owner,
           kind: unit.type === 'dreadnought' ? 'unitHeavy' : 'unitLight',
-          yaw: fireYaw,
+          yaw: unit.turretYaw,
           origin: unit,
           speed: ub.projectileSpeed,
           damage: ub.damage,
@@ -66,12 +60,8 @@ export function stepUnits(state: SimState, balance: Balance): void {
     }
 
     unit.targetKey = null;
-    // No target: swing the turret back to point forward (Tank's turret == body).
-    if (unit.type === 'dreadnought') {
-      unit.turretYaw = rotateToward(unit.turretYaw, unit.yaw, balance.units.hovertank.turnRate * 2 * DT);
-    } else {
-      unit.turretYaw = unit.yaw;
-    }
+    // No target: swing the turret back to point forward along the hull.
+    unit.turretYaw = rotateToward(unit.turretYaw, unit.yaw, turretRate * DT);
     const waypoints = laneWaypoints(unit.owner, unit.lane);
     const wp = waypoints[Math.min(unit.waypointIndex, waypoints.length - 1)];
     const dx = wp.x - unit.pos.x;
@@ -82,8 +72,8 @@ export function stepUnits(state: SimState, balance: Balance): void {
       continue;
     }
     if (d > 1e-6) {
-      // Turn back toward the travel direction; only drive once roughly facing it
-      // (so a unit that turned to shoot first swings back before moving on).
+      // Turn the hull toward the travel direction and only drive once roughly
+      // facing it (so it pivots into a new heading rather than sliding sideways).
       const desired = Math.atan2(dz, dx);
       unit.yaw = rotateToward(unit.yaw, desired, ub.turnRate * DT);
       if (Math.abs(angleDelta(unit.yaw, desired)) <= MOVE_ALIGN_RAD) {
