@@ -88,6 +88,10 @@
               <span class="hud-label">PING</span>
               <span id="hud-ping" data-testid="hud-ping">--</span>
             </div>
+            <div class="hud-audio-group">
+              <button id="hud-audio-music" data-testid="hud-audio-music" class="hud-audio" title="Music on">♪ MUSIC</button>
+              <button id="hud-audio-sfx" data-testid="hud-audio-sfx" class="hud-audio" title="Effects on">♪ SFX</button>
+            </div>
           </div>
 
           <!-- event feed -->
@@ -95,6 +99,11 @@
 
           <!-- bottom-left: mech status -->
           <div id="hud-mech">
+            <div class="meter-row" id="hud-mode-row">
+              <span class="hud-label">MODE</span>
+              <span id="hud-mode" data-testid="hud-mode" class="mode-tag">WALKER</span>
+              <span class="mode-hint">[F] TRANSFORM</span>
+            </div>
             <div class="meter-row">
               <span class="hud-label">HULL</span>
               <div class="meter" id="hud-health" data-testid="hud-health">
@@ -166,6 +175,26 @@
 
       <!-- ============ Error banner ============ -->
       <div id="error-banner" data-testid="error-banner"></div>
+
+      <!-- ============ Controls help (top-right button + overlay) ============ -->
+      <button id="controls-btn" data-testid="controls-btn" class="controls-btn" title="Show controls">⌨ CONTROLS</button>
+      <div id="controls-overlay" class="overlay" data-testid="controls-overlay">
+        <div class="panel center-panel">
+          <h2>CONTROLS</h2>
+          <table class="controls-table">
+            <tr><td><kbd>W</kbd> / <kbd>S</kbd></td><td>Drive forward / reverse</td></tr>
+            <tr><td><kbd>A</kbd> / <kbd>D</kbd></td><td>Turn left / right (the camera follows)</td></tr>
+            <tr><td><kbd>M</kbd></td><td>Fire primary &mdash; gatling, or laser while hovering</td></tr>
+            <tr><td><kbd>N</kbd></td><td>Fire rockets (walker only)</td></tr>
+            <tr><td><kbd>F</kbd></td><td>Transform walker &harr; hover</td></tr>
+            <tr><td><kbd>1</kbd> / <kbd>2</kbd></td><td>Build hovertank / dreadnought</td></tr>
+            <tr><td>&#9834; button</td><td>Mute / unmute sound</td></tr>
+            <tr><td><kbd>F3</kbd></td><td>Debug overlay</td></tr>
+          </table>
+          <p class="dim">The mouse is not used during the match.</p>
+          <button id="controls-close" data-testid="controls-close" class="btn primary">CLOSE</button>
+        </div>
+      </div>
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

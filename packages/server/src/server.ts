@@ -11,7 +11,7 @@
  */
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
-import { WebSocketServer } from 'ws';
+import { WebSocketServer, WebSocket } from 'ws';
 import { DEFAULT_TICK_MS, isBalancePresetName } from '@precinct/shared';
 import type { BalancePresetName } from '@precinct/shared';
 import { attachConnection } from './connection';
@@ -30,6 +30,10 @@ export interface StartServerOptions {
   balancePreset?: BalancePresetName;
   /** wall-clock ms per countdown second (tests shrink this). Default 1000. */
   countdownSecondMs?: number;
+  /** max concurrent WebSocket connections; 0 = unlimited. Default: MAX_CONNECTIONS env or 0. */
+  maxConnections?: number;
+  /** expose GET /debug/state. Default: DEBUG_STATE env (default true). */
+  debugState?: boolean;
 }
 
 export interface RunningServer {
@@ -46,6 +50,13 @@ function envNumber(name: string): number | undefined {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
+function envBool(name: string, dflt: boolean): boolean {
+  const raw = process.env[name];
+  if (raw === undefined || raw === '') return dflt;
+  const v = raw.toLowerCase();
+  return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+}
+
 function envPreset(logger: Logger): BalancePresetName | undefined {
   const raw = process.env.BALANCE_PRESET;
   if (raw === undefined || raw === '') return undefined;
@@ -58,6 +69,8 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Runnin
   const logger = createLogger(opts.logLevel ?? logLevelFromEnv());
   const tickMs = opts.tickMs ?? envNumber('TICK_MS') ?? DEFAULT_TICK_MS;
   const forcedPreset = opts.balancePreset ?? envPreset(logger);
+  const debugStateEnabled = opts.debugState ?? envBool('DEBUG_STATE', true);
+  const maxConnections = opts.maxConnections ?? envNumber('MAX_CONNECTIONS') ?? 0;
   const lobby = new LobbyManager({
     logger,
     tickMs,
@@ -74,6 +87,11 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Runnin
       return;
     }
     if (req.method === 'GET' && path === '/debug/state') {
+      if (!debugStateEnabled) {
+        res.writeHead(404, { 'content-type': 'application/json' });
+        res.end(JSON.stringify({ error: 'not found' }));
+        return;
+      }
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify(lobby.debugState()));
       return;
@@ -82,8 +100,37 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Runnin
     res.end(JSON.stringify({ error: 'not found' }));
   });
 
-  const wss = new WebSocketServer({ server: httpServer });
-  wss.on('connection', (ws) => attachConnection(lobby, ws));
+  // maxPayload caps frames at the ws layer before our 4 KiB app-level check,
+  // so an oversized frame can never be buffered into memory first.
+  const wss = new WebSocketServer({ server: httpServer, maxPayload: 16 * 1024 });
+  wss.on('connection', (ws) => {
+    if (maxConnections > 0 && wss.clients.size > maxConnections) {
+      ws.close(1013, 'server at capacity');
+      return;
+    }
+    const live = ws as WebSocket & { isAlive: boolean };
+    live.isAlive = true;
+    ws.on('pong', () => {
+      live.isAlive = true;
+    });
+    attachConnection(lobby, ws);
+  });
+
+  // Heartbeat: terminate sockets that stop answering pings, so dead/half-open
+  // connections don't pile up on an internet-facing server.
+  const heartbeat = setInterval(() => {
+    for (const ws of wss.clients) {
+      const live = ws as WebSocket & { isAlive?: boolean };
+      if (live.isAlive === false) {
+        ws.terminate();
+        continue;
+      }
+      if (ws.readyState !== WebSocket.OPEN) continue;
+      live.isAlive = false;
+      ws.ping();
+    }
+  }, 30_000);
+  heartbeat.unref();
 
   const requestedPort = opts.port ?? envNumber('PORT') ?? 8080;
   await new Promise<void>((resolve, reject) => {
@@ -94,7 +141,13 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Runnin
     });
   });
   const port = (httpServer.address() as AddressInfo).port;
-  logger.info('server listening', { port, tickMs, forcedPreset: forcedPreset ?? null });
+  logger.info('server listening', {
+    port,
+    tickMs,
+    forcedPreset: forcedPreset ?? null,
+    debugState: debugStateEnabled,
+    maxConnections,
+  });
 
   let closed = false;
   return {
@@ -104,6 +157,7 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Runnin
     close: async (): Promise<void> => {
       if (closed) return;
       closed = true;
+      clearInterval(heartbeat);
       lobby.closeAll();
       await new Promise<void>((resolve) => wss.close(() => resolve()));
       httpServer.closeAllConnections();

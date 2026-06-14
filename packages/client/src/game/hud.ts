@@ -21,6 +21,7 @@ export class Hud {
   private readonly heatText = byId('hud-heat-text');
   private readonly rocketsRoot = byId('hud-rockets');
   private readonly reloadFill = byId('hud-reload-fill');
+  private readonly modeTag = byId('hud-mode');
   private readonly credits = byId('hud-credits');
   private readonly timer = byId('hud-timer');
   private readonly ping = byId('hud-ping');
@@ -58,6 +59,12 @@ export class Hud {
 
   /** per-frame update from the latest snapshot data */
   update(tick: number, mech: MechSnap, player: PlayerSnap, rtt: number | null): void {
+    // locomotion mode (hover locks rockets, fires the laser)
+    const hover = mech.mode === 'hover';
+    this.modeTag.textContent = hover ? 'HOVER' : 'WALKER';
+    this.modeTag.classList.toggle('hover', hover);
+    this.rocketsRoot.classList.toggle('locked', hover);
+
     // health
     const hpFrac = Math.max(0, mech.hp) / this.balance.mech.maxHp;
     this.healthFill.style.width = `${hpFrac * 100}%`;

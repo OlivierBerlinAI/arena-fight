@@ -6,3 +6,7 @@ playwright-report/
 blob-report/
 *.log
 .DS_Store
+.env
+
+# TypeScript incremental build info
+*.tsbuildinfo

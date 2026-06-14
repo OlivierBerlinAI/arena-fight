@@ -149,6 +149,7 @@ export class LobbyManager {
           aimZ: msg.aimZ,
           fire: msg.fire,
           alt: msg.alt,
+          mode: msg.mode,
         });
         return;
       }

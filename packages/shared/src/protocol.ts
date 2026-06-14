@@ -7,6 +7,7 @@ import { isBalancePresetName } from './balance.js';
 import type { BalancePresetName, UnitType } from './balance.js';
 import type {
   MatchPhase,
+  MechMode,
   Ownership,
   PlayerIndex,
   PlayerStats,
@@ -29,6 +30,7 @@ export interface MechSnap {
   vx: number;
   vz: number;
   yaw: number;
+  mode: MechMode;
   hp: number;
   alive: boolean;
   heat: number;
@@ -129,7 +131,7 @@ export type ClientMessage =
   | { type: 'joinRoom'; roomId: string }
   | { type: 'leaveRoom' }
   | { type: 'ready'; ready: boolean }
-  | { type: 'input'; mx: number; mz: number; aimX: number; aimZ: number; fire: boolean; alt: boolean }
+  | { type: 'input'; mx: number; mz: number; aimX: number; aimZ: number; fire: boolean; alt: boolean; mode: MechMode }
   | { type: 'build'; unit: UnitType }
   | { type: 'ping'; t: number };
 
@@ -196,6 +198,10 @@ function isUnitType(v: unknown): v is UnitType {
   return v === 'hovertank' || v === 'dreadnought';
 }
 
+function isMechMode(v: unknown): v is MechMode {
+  return v === 'walker' || v === 'hover';
+}
+
 /** Parse raw socket data (string) into a validated ClientMessage. */
 export function parseClientMessage(raw: unknown): ValidationResult {
   if (typeof raw !== 'string') return { ok: false, error: 'non-string frame' };
@@ -255,7 +261,13 @@ export function validateClientMessage(data: unknown): ValidationResult {
       if (typeof fire !== 'boolean' || typeof alt !== 'boolean') {
         return { ok: false, error: 'input: invalid flags' };
       }
-      return { ok: true, msg: { type, mx, mz, aimX, aimZ, fire, alt } };
+      // `mode` is optional for backward compatibility: absent → walker.
+      let mode: MechMode = 'walker';
+      if (data.mode !== undefined) {
+        if (!isMechMode(data.mode)) return { ok: false, error: 'input: invalid mode' };
+        mode = data.mode;
+      }
+      return { ok: true, msg: { type, mx, mz, aimX, aimZ, fire, alt, mode } };
     }
     case 'build': {
       if (!isUnitType(data.unit)) return { ok: false, error: 'build: invalid unit' };

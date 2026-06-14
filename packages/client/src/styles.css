@@ -313,6 +313,31 @@ input[type='text']:focus {
 #hud-ping {
   color: var(--dim);
 }
+.hud-audio-group {
+  display: flex;
+  gap: 6px;
+  /* #hud is pointer-events:none so the mouse aims through it — re-enable here */
+  pointer-events: auto;
+}
+.hud-audio {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-size: 11px;
+  letter-spacing: 1px;
+  line-height: 1;
+  padding: 7px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+.hud-audio:hover {
+  border-color: var(--line-bright);
+}
+.hud-audio.muted {
+  color: var(--dim);
+  opacity: 0.6;
+}
 
 /* event feed */
 #event-feed {
@@ -445,6 +470,32 @@ input[type='text']:focus {
   height: 100%;
   width: 0%;
   background: var(--yellow);
+}
+
+/* locomotion mode tag + transform hint */
+.mode-tag {
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 1px 8px;
+  border: 1px solid var(--line-bright);
+  color: var(--green);
+  background: #060a10;
+}
+.mode-tag.hover {
+  color: #9fe8ff;
+  border-color: #9fe8ff;
+  box-shadow: 0 0 8px rgba(159, 232, 255, 0.45);
+}
+.mode-hint {
+  margin-left: auto;
+  font-size: 10px;
+  opacity: 0.55;
+  letter-spacing: 0.5px;
+}
+/* rockets greyed out while hovering (laser only) */
+#hud-rockets.locked {
+  opacity: 0.3;
+  filter: grayscale(1);
 }
 
 /* build bar (bottom center) */
@@ -592,4 +643,51 @@ input[type='text']:focus {
 #result-title.defeat {
   color: var(--red);
   text-shadow: 0 0 30px rgba(239, 68, 68, 0.7);
+}
+
+/* controls help: always-available top-right button + shortcuts overlay */
+.controls-btn {
+  position: fixed;
+  top: 10px;
+  right: 12px;
+  z-index: 30;
+  background: var(--panel);
+  border: 1px solid var(--line-bright);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  letter-spacing: 1px;
+  padding: 7px 12px;
+  cursor: pointer;
+}
+.controls-btn:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
+.controls-table {
+  border-collapse: collapse;
+  margin: 8px auto 14px;
+  font-size: 14px;
+}
+.controls-table td {
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.controls-table td:first-child {
+  white-space: nowrap;
+  color: var(--cyan);
+}
+kbd {
+  display: inline-block;
+  min-width: 18px;
+  text-align: center;
+  padding: 2px 6px;
+  border: 1px solid var(--line-bright);
+  border-bottom-width: 2px;
+  border-radius: 3px;
+  background: #060a10;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text);
 }

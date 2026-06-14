@@ -1,14 +1,20 @@
 /**
- * Third-person chase camera: behind and above the own mech, opposite its aim
- * direction, smoothed each frame, looking slightly ahead of the mech.
+ * Third-person chase camera. It sits behind and above the own mech and always
+ * looks along the mech's facing direction (mech.yaw) — as the player turns with
+ * A/D the whole view rotates with them. Position trails softly (a little lag,
+ * never perfectly glued); the look direction tracks a touch faster so turning
+ * stays responsive. The mouse is not involved at all.
  */
 import * as THREE from 'three';
-import type { MechSnap, Vec2 } from '@precinct/shared';
+import type { MechSnap } from '@precinct/shared';
 
 const DIST = 13;
 const HEIGHT = 14;
 const LOOK_AHEAD = 6;
-const SMOOTH = 0.08; // ~8% per frame at 60 fps
+/** position follow: ~8% toward the target per 60fps frame (trailing lag) */
+const POS_SMOOTH = 0.08;
+/** look-direction follow: snappier so turns don't feel sluggish */
+const LOOK_SMOOTH = 0.16;
 /** keep the camera inside the arena so boundary walls never occlude the mech */
 const ARENA_CLAMP = 56;
 
@@ -18,15 +24,9 @@ export class ChaseCamera {
 
   constructor(private readonly camera: THREE.PerspectiveCamera) {}
 
-  update(mech: MechSnap, aim: Vec2 | null, dt: number): void {
-    let yaw = mech.yaw;
-    if (aim) {
-      const dx = aim.x - mech.x;
-      const dz = aim.z - mech.z;
-      if (dx * dx + dz * dz > 0.25) yaw = Math.atan2(dz, dx);
-    }
-    const dirX = Math.cos(yaw);
-    const dirZ = Math.sin(yaw);
+  update(mech: MechSnap, dt: number): void {
+    const dirX = Math.cos(mech.yaw);
+    const dirZ = Math.sin(mech.yaw);
 
     const desired = new THREE.Vector3(
       Math.max(-ARENA_CLAMP, Math.min(ARENA_CLAMP, mech.x - dirX * DIST)),
@@ -40,10 +40,11 @@ export class ChaseCamera {
       this.lookTarget.copy(desiredLook);
       this.initialized = true;
     } else {
-      // frame-rate-independent smoothing equivalent to ~8%/frame at 60 fps
-      const k = 1 - Math.pow(1 - SMOOTH, dt * 60);
-      this.camera.position.lerp(desired, k);
-      this.lookTarget.lerp(desiredLook, k);
+      // frame-rate-independent smoothing equivalent to the per-frame constants at 60 fps
+      const kp = 1 - Math.pow(1 - POS_SMOOTH, dt * 60);
+      const kl = 1 - Math.pow(1 - LOOK_SMOOTH, dt * 60);
+      this.camera.position.lerp(desired, kp);
+      this.lookTarget.lerp(desiredLook, kl);
     }
     this.camera.lookAt(this.lookTarget);
   }

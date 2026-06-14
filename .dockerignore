@@ -1,0 +1,16 @@
+# Keep the build context small and reproducible — deps are installed via npm ci
+# inside the image, never copied from the host.
+.git
+.gitignore
+node_modules
+**/node_modules
+dist
+**/dist
+.vite
+**/.vite
+test-results
+playwright-report
+blob-report
+*.log
+.DS_Store
+.env

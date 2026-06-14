@@ -23,6 +23,7 @@ import { ChaseCamera } from './camera';
 import { Hud } from './hud';
 import { Minimap } from './minimap';
 import { DebugOverlay } from './debug';
+import { SoundEngine } from './audio';
 import { byId } from '../dom';
 
 export interface MatchConfig {
@@ -50,9 +51,21 @@ export class MatchController {
   private disposed = false;
   private ended = false;
 
+  private readonly musicBtn = byId<HTMLButtonElement>('hud-audio-music');
+  private readonly sfxBtn = byId<HTMLButtonElement>('hud-audio-sfx');
+  private readonly onMusicClick = (): void => {
+    this.sound.toggleMusicMuted();
+    this.updateAudioButtons();
+  };
+  private readonly onSfxClick = (): void => {
+    this.sound.toggleSfxMuted();
+    this.updateAudioButtons();
+  };
+
   constructor(
     private readonly net: Net,
-    readonly cfg: MatchConfig
+    readonly cfg: MatchConfig,
+    private readonly sound: SoundEngine
   ) {
     this.balance = getBalance(cfg.preset);
     this.buffer = new SnapshotBuffer(cfg.tickMs);
@@ -65,12 +78,17 @@ export class MatchController {
       this.net.send({ type: 'build', unit });
     };
     this.hud = new Hud(this.balance, cfg.playerIndex, cfg.tickRate, sendBuild);
-    this.input = new InputManager(this.renderer.canvas, this.renderer.camera, {
+    this.input = new InputManager({
       onBuild: sendBuild,
       onToggleDebug: () => this.debug.toggle(),
+      onTransform: (mode) => this.sound.transform(mode === 'hover'),
       sendInput: (input) => this.net.send({ type: 'input', ...input }),
     });
     this.input.setPlaying(true);
+
+    this.musicBtn.addEventListener('click', this.onMusicClick);
+    this.sfxBtn.addEventListener('click', this.onSfxClick);
+    this.updateAudioButtons();
 
     gameHook.playerIndex = cfg.playerIndex;
     gameHook.winner = null;
@@ -91,6 +109,8 @@ export class MatchController {
     this.buffer.push(snap, now);
     this.entities.onRawSnapshot(snap, events);
     this.hud.addEvents(events);
+    this.sound.onMatchEvents(events, this.cfg.playerIndex);
+    this.sound.onProjectiles(snap.projectiles);
 
     // test hook (serialized fresh from this snapshot)
     gameHook.tick = snap.tick;
@@ -122,8 +142,8 @@ export class MatchController {
 
       const myMech = view.mechs[this.cfg.playerIndex];
       if (myMech) {
-        this.chase.update(myMech, this.input.aimPoint, dt);
-        this.input.updateAim({ x: myMech.x + Math.cos(myMech.yaw) * 8, z: myMech.z + Math.sin(myMech.yaw) * 8 });
+        this.chase.update(myMech, dt);
+        this.input.update(myMech, dt);
       }
 
       const player = latest.players[this.cfg.playerIndex];
@@ -132,10 +152,9 @@ export class MatchController {
         this.hud.update(latest.tick, mechSnap, player, this.net.rtt);
       }
 
-      const aim = this.input.aimPoint;
-      const viewYaw =
-        myMech && aim ? Math.atan2(aim.z - myMech.z, aim.x - myMech.x) : null;
-      this.minimap.draw(latest, viewYaw);
+      // Minimap "view" wedge follows the fixed chase-camera direction, not the
+      // mouse — the camera no longer rotates with aim.
+      this.minimap.draw(latest, this.chase.groundYaw);
 
       gameHook.snapshotAge = this.buffer.snapshotAge(now);
       this.debug.update({
@@ -165,10 +184,23 @@ export class MatchController {
     this.renderer.render();
   }
 
+  private updateAudioButtons(): void {
+    this.setAudioBtn(this.musicBtn, 'MUSIC', 'Music', this.sound.isMusicMuted);
+    this.setAudioBtn(this.sfxBtn, 'SFX', 'Effects', this.sound.isSfxMuted);
+  }
+
+  private setAudioBtn(btn: HTMLButtonElement, label: string, name: string, muted: boolean): void {
+    btn.textContent = `${muted ? '♪̸' : '♪'} ${label}`;
+    btn.classList.toggle('muted', muted);
+    btn.title = `${name} ${muted ? 'off' : 'on'}`;
+  }
+
   dispose(): void {
     if (this.disposed) return;
     this.disposed = true;
     cancelAnimationFrame(this.raf);
+    this.musicBtn.removeEventListener('click', this.onMusicClick);
+    this.sfxBtn.removeEventListener('click', this.onSfxClick);
     this.input.dispose();
     this.hud.dispose();
     this.entities.dispose();
@@ -181,7 +213,7 @@ export class MatchController {
 function serializeEntities(snap: Snapshot): GameEntityInfo[] {
   const out: GameEntityInfo[] = [];
   for (const m of snap.mechs) {
-    out.push({ kind: 'mech', id: `mech-${m.player}`, owner: m.player, x: m.x, z: m.z, hp: m.hp, alive: m.alive });
+    out.push({ kind: 'mech', id: `mech-${m.player}`, owner: m.player, x: m.x, z: m.z, hp: m.hp, alive: m.alive, mode: m.mode, yaw: m.yaw });
   }
   for (const u of snap.units) {
     out.push({ kind: 'unit', id: `unit-${u.id}`, owner: u.owner, x: u.x, z: u.z, hp: u.hp, type: u.type, alive: true });

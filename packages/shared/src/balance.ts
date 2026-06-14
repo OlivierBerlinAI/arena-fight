@@ -34,12 +34,18 @@ export interface Balance {
   mech: {
     maxHp: number;
     radius: number;
-    /** units per second^2 */
+    /** units per second^2 (walker mode) */
     accel: number;
-    /** units per second */
+    /** units per second (walker mode) */
     maxSpeed: number;
-    /** exponential friction factor per second */
+    /** exponential friction factor per second (walker mode) */
     friction: number;
+    /** units per second^2 while in hover mode */
+    hoverAccel: number;
+    /** units per second while in hover mode (faster glide) */
+    hoverMaxSpeed: number;
+    /** lower friction in hover mode → momentum/gliding */
+    hoverFriction: number;
     respawnTicks: number;
     spawnProtectionTicks: number;
   };
@@ -55,6 +61,20 @@ export interface Balance {
     coolPerTick: number;
     overheatAt: number;
     overheatLockTicks: number;
+  };
+  /**
+   * Hover-mode primary weapon. Replaces the gatling while hovering; rockets are
+   * disabled in hover. Shares the gatling's heat meter (overheatAt / coolPerTick
+   * / overheatLockTicks) so there is a single heat system regardless of mode.
+   */
+  laser: {
+    damage: number;
+    intervalTicks: number;
+    /** max aim deviation in radians (0 = pinpoint) */
+    spread: number;
+    projectileSpeed: number;
+    projectileTtlTicks: number;
+    heatPerShot: number;
   };
   rocket: {
     damage: number;
@@ -97,6 +117,9 @@ export const DEFAULT_BALANCE: Balance = {
     accel: 55,
     maxSpeed: 11,
     friction: 5,
+    hoverAccel: 58,
+    hoverMaxSpeed: 16, // glides noticeably faster than the walker's 11
+    hoverFriction: 2.6, // low drag → drifting/gliding feel
     respawnTicks: 4 * T,
     spawnProtectionTicks: 2 * T,
   },
@@ -110,6 +133,14 @@ export const DEFAULT_BALANCE: Balance = {
     coolPerTick: 45 / T,
     overheatAt: 100,
     overheatLockTicks: 2 * T,
+  },
+  laser: {
+    damage: 4, // sole hover weapon (no rockets) → slightly above gatling's 3
+    intervalTicks: 4, // 7.5 shots/s → 30 dps, same ballpark as the gatling
+    spread: 0, // pinpoint energy bolt
+    projectileSpeed: 120, // beam-fast
+    projectileTtlTicks: Math.round(0.5 * T),
+    heatPerShot: 6.5, // overheats on a similar timescale to the gatling
   },
   rocket: {
     damage: 45,

@@ -172,15 +172,33 @@ function std(color: number, opts: { emissive?: number; ei?: number; rough?: numb
   });
 }
 
+/** leg-swing phase gained per world-unit travelled */
+const STRIDE_RATE = 0.9;
+/** peak fore/aft leg swing (radians) at full walking speed */
+const SWING_AMP = 0.55;
+/** how much turning (rad/s) counts toward the walk gait, so the legs also step
+ *  while the walker rotates in place */
+const TURN_GAIT = 3.0;
+
 interface MechView {
   group: THREE.Group;
   hull: THREE.Group;
+  legs: [THREE.Group, THREE.Group];
+  hoverGlow: THREE.Mesh<THREE.CircleGeometry, THREE.MeshBasicMaterial>;
   shield: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial>;
   hpBar: HpBar;
   bobPhase: number;
+  /** accumulated leg-swing phase (advances with ground speed) */
+  stridePhase: number;
+  /** 0 = walker, 1 = hover; lerps for a smooth transform */
+  hoverBlend: number;
+  /** previous rendered yaw, for deriving the visual turn rate */
+  prevYaw: number;
+  /** false until prevYaw has been seeded (also reset on death) */
+  poseInit: boolean;
 }
 
-/** Low-poly hover walker: two legs, torso, twin gun arms, team accents. */
+/** Low-poly mech: two animated legs, torso, twin gun arms, team accents. */
 function buildMech(owner: PlayerIndex): MechView {
   const team = TEAM_HEX[owner];
   const group = new THREE.Group();
@@ -191,18 +209,23 @@ function buildMech(owner: PlayerIndex): MechView {
   const accent = std(0x1a2230, { emissive: team, ei: 1.0 });
   const dark = std(0x1a212e);
 
-  // legs (reverse-jointed stubs under the torso)
+  // legs (reverse-jointed) — each in a hip-pivot group so it can swing/retract
+  const legs: THREE.Group[] = [];
   for (const side of [-1, 1]) {
+    const leg = new THREE.Group();
+    leg.position.set(0, 0.95, side * 0.6); // hip pivot
     const hip = new THREE.Mesh(new THREE.CylinderGeometry(0.16, 0.2, 0.7, 6), dark);
-    hip.position.set(-0.15, 0.85, side * 0.55);
+    hip.position.set(-0.15, -0.1, side * -0.05);
     hip.rotation.x = side * 0.18;
-    hull.add(hip);
+    leg.add(hip);
     const shin = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.5, 0.3), body);
-    shin.position.set(0.05, 0.42, side * 0.68);
-    hull.add(shin);
+    shin.position.set(0.05, -0.53, side * 0.08);
+    leg.add(shin);
     const foot = new THREE.Mesh(new THREE.BoxGeometry(0.85, 0.18, 0.45), dark);
-    foot.position.set(0.1, 0.12, side * 0.68);
-    hull.add(foot);
+    foot.position.set(0.1, -0.83, side * 0.08);
+    leg.add(foot);
+    hull.add(leg);
+    legs.push(leg);
   }
 
   // torso
@@ -235,6 +258,21 @@ function buildMech(owner: PlayerIndex): MechView {
   strip.position.set(0, 1.16, 0);
   hull.add(strip);
 
+  // hover thruster wash on the ground (only visible while hovering)
+  const hoverGlow = new THREE.Mesh(
+    new THREE.CircleGeometry(1.7, 24),
+    new THREE.MeshBasicMaterial({
+      color: team,
+      transparent: true,
+      opacity: 0,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+    })
+  );
+  hoverGlow.rotation.x = -Math.PI / 2;
+  hoverGlow.visible = false;
+  group.add(hoverGlow);
+
   // spawn-protection shield
   const shield = new THREE.Mesh(
     new THREE.SphereGeometry(1.9, 18, 12),
@@ -247,7 +285,19 @@ function buildMech(owner: PlayerIndex): MechView {
   hpBar.group.position.y = 3.2;
   group.add(hpBar.group);
 
-  return { group, hull, shield, hpBar, bobPhase: owner * 1.7 };
+  return {
+    group,
+    hull,
+    legs: [legs[0], legs[1]],
+    hoverGlow,
+    shield,
+    hpBar,
+    bobPhase: owner * 1.7,
+    stridePhase: 0,
+    hoverBlend: 0,
+    prevYaw: 0,
+    poseInit: false,
+  };
 }
 
 interface UnitView {
@@ -318,6 +368,7 @@ function buildUnit(owner: PlayerIndex, type: UnitType, maxHp: number): UnitView 
 
 const PROJECTILE_STYLE: Record<ProjectileSnap['kind'], { radius: number; y: number }> = {
   gatling: { radius: 0.11, y: 1.55 },
+  laser: { radius: 0.13, y: 1.55 },
   rocket: { radius: 0.3, y: 1.4 },
   unitLight: { radius: 0.14, y: 0.7 },
   unitHeavy: { radius: 0.26, y: 1.6 },
@@ -358,27 +409,82 @@ export class EntityManager {
   // ------------------------------------------------ per-frame view updates
 
   syncView(view: ViewState, timeSec: number, dt: number): void {
-    this.syncMechs(view.mechs, timeSec);
+    this.syncMechs(view.mechs, timeSec, dt);
     this.syncUnits(view.units);
     this.syncProjectiles(view.projectiles, dt);
     this.particles.update(dt);
   }
 
-  private syncMechs(mechs: MechSnap[], timeSec: number): void {
+  private syncMechs(mechs: MechSnap[], timeSec: number, dt: number): void {
+    const walkerMax = this.balance.mech.maxSpeed;
     for (const m of mechs) {
       const view = this.mechs[m.player];
       view.group.visible = m.alive;
-      if (!m.alive) continue;
-      const bob = Math.sin(timeSec * 3.1 + view.bobPhase) * 0.09;
-      view.group.position.set(m.x, 0.25 + bob, m.z);
+      if (!m.alive) {
+        // Keep the pose state in sync while hidden so the mech reappears in the
+        // correct mode (no one-frame hover-pose pop when respawning).
+        view.hoverBlend = m.mode === 'hover' ? 1 : 0;
+        view.stridePhase = 0;
+        view.poseInit = false;
+        continue;
+      }
+
+      const speed = Math.hypot(m.vx, m.vz);
+
+      // Visual turn rate (rad/s) from the change in rendered yaw.
+      if (!view.poseInit) {
+        view.prevYaw = m.yaw;
+        view.poseInit = true;
+      }
+      let yawDelta = m.yaw - view.prevYaw;
+      yawDelta = Math.atan2(Math.sin(yawDelta), Math.cos(yawDelta));
+      view.prevYaw = m.yaw;
+      const yawRate = dt > 1e-4 ? Math.abs(yawDelta) / dt : 0;
+
+      // Gait drives the walk cycle from BOTH moving and turning in place.
+      const gait = speed + yawRate * TURN_GAIT;
+      const gaitFrac = Math.min(1, gait / walkerMax);
+
+      // Smoothly blend between walker (0) and hover (1) for the transform.
+      const target = m.mode === 'hover' ? 1 : 0;
+      view.hoverBlend += (target - view.hoverBlend) * Math.min(1, dt * 8);
+      const hb = view.hoverBlend;
+
+      // Walk cycle: advance the stride by the gait; legs swing in antiphase.
+      view.stridePhase = (view.stridePhase + gait * dt * STRIDE_RATE) % (Math.PI * 2);
+      const swing = Math.sin(view.stridePhase) * SWING_AMP * gaitFrac;
+      for (let i = 0; i < 2; i++) {
+        const walkZ = i === 0 ? swing : -swing;
+        const hoverZ = -1.5; // legs fold fully back, tucked together, while hovering
+        view.legs[i].rotation.z = walkZ * (1 - hb) + hoverZ * hb;
+        view.legs[i].rotation.x = 0;
+      }
+
+      // Body height: grounded step-bob (walker) ↔ hover hugs the ground LOWER.
+      const idleBob = Math.sin(timeSec * 3.1 + view.bobPhase) * 0.09;
+      const stepBob = Math.abs(Math.sin(view.stridePhase)) * 0.06 * gaitFrac;
+      const walkerY = 0.25 + stepBob + idleBob * 0.4;
+      const hoverY = -0.15 + idleBob * 0.5;
+      const groupY = walkerY * (1 - hb) + hoverY * hb;
+      view.group.position.set(m.x, groupY, m.z);
       view.group.rotation.y = -m.yaw;
-      // lean with velocity (computed in mech-local space)
+
+      // Lean with velocity (computed in mech-local space).
       const fx = Math.cos(m.yaw);
       const fz = Math.sin(m.yaw);
       const fwd = m.vx * fx + m.vz * fz;
       const side = m.vx * -fz + m.vz * fx;
       view.hull.rotation.z = -fwd * 0.012;
       view.hull.rotation.x = -side * 0.012;
+
+      // Hover thruster wash, pinned to the ground beneath the floating mech.
+      const glow = view.hoverGlow;
+      glow.visible = hb > 0.02;
+      if (glow.visible) {
+        glow.position.y = 0.07 - groupY;
+        glow.material.opacity = hb * (0.3 + 0.12 * Math.sin(timeSec * 9));
+      }
+
       view.shield.visible = m.shielded;
       if (m.shielded) {
         view.shield.material.opacity = 0.1 + 0.08 * Math.sin(timeSec * 8);
@@ -423,17 +529,30 @@ export class EntityManager {
         // Defensive: unknown projectile kinds (newer server) fall back to a tracer.
         const style = PROJECTILE_STYLE[p.kind] ?? PROJECTILE_STYLE.gatling;
         const color =
-          p.kind === 'gatling' ? 0xfff3c4 : p.kind === 'rocket' ? 0xffb454 : teamHex(p.owner);
+          p.kind === 'gatling'
+            ? 0xfff3c4
+            : p.kind === 'laser'
+              ? 0x9fe8ff
+              : p.kind === 'rocket'
+                ? 0xffb454
+                : teamHex(p.owner);
         mesh = new THREE.Mesh(
           new THREE.SphereGeometry(style.radius, 8, 6),
           new THREE.MeshBasicMaterial({ color })
         );
         mesh.position.set(p.x, style.y, p.z);
+        if (p.kind === 'laser') {
+          // stretch the bolt into a streak aligned with its travel direction
+          mesh.scale.set(5, 1, 1);
+          mesh.rotation.y = -Math.atan2(p.vz, p.vx);
+        }
         this.projectiles.set(p.id, mesh);
         this.scene.add(mesh);
         if (p.kind === 'gatling') {
           // muzzle flash at the projectile's first known position
           this.particles.burst(p.x, style.y, p.z, 2, 0xffe9a8, 2.5, 0.12);
+        } else if (p.kind === 'laser') {
+          this.particles.burst(p.x, style.y, p.z, 2, 0x9fe8ff, 3, 0.12);
         }
       }
       mesh.position.x = p.x;
@@ -441,6 +560,8 @@ export class EntityManager {
       if (p.kind === 'rocket' && Math.random() < dt * 90) {
         // simple smoke/flame trail
         this.particles.burst(p.x, PROJECTILE_STYLE.rocket.y, p.z, 1, 0xff8c3a, 0.8, 0.35);
+      } else if (p.kind === 'laser' && Math.random() < dt * 45) {
+        this.particles.burst(p.x, PROJECTILE_STYLE.laser.y, p.z, 1, 0x9fe8ff, 0.6, 0.16);
       }
     }
     for (const [id, mesh] of this.projectiles) {
@@ -470,6 +591,8 @@ export class EntityManager {
           this.particles.burst(p.x, 1.0, p.z, 14, 0xffa860, 6, 0.45);
         } else if (p.kind === 'gatling') {
           this.particles.burst(p.x, 1.2, p.z, 1, 0xffe9a8, 2, 0.15);
+        } else if (p.kind === 'laser') {
+          this.particles.burst(p.x, 1.4, p.z, 3, 0x9fe8ff, 3.2, 0.14);
         } else {
           this.particles.burst(p.x, 0.9, p.z, 2, teamHex(p.owner), 2.5, 0.2);
         }
