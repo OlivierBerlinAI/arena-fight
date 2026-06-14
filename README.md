@@ -1,6 +1,6 @@
 # Mech Arena Fight
 
-A web-based 1v1 base-assault arena inspired by the *Precinct Assault* mode of
+A web-based 1v1 base-assault arena inspired by the base-assault mode of
 Future Cop: L.A.P.D. Two players each pilot a hovering combat mech — but the
 match is won strategically: build autonomous attack robots at your base
 factory, capture neutral turrets for income, and win by getting **one of your

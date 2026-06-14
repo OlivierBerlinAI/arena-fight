@@ -1,5 +1,5 @@
 /**
- * The single handcrafted map: "Precinct 13". Point-symmetric 120×120 arena.
+ * The single handcrafted map: "Arena 13". Point-symmetric 120×120 arena.
  *
  * Player 0's base sits in the south-west corner, player 1's in the north-east
  * (every player-1 coordinate is the negation of the player-0 one). Two lanes
