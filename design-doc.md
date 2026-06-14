@@ -1,10 +1,10 @@
-# One-Shot Prompt: "Mech Arena Fight" — Web-based 1v1 Base Assault
+# One-Shot Prompt: "Precinct Duel" — Web-based 1v1 Base Assault
 
 > Paste everything below this line into a fresh session.
 
 ---
 
-Build a complete, runnable, web-based multiplayer game inspired by the base-assault mode of Future Cop: L.A.P.D. (1998). Two players each pilot a hovering combat mech, but the match is won strategically: each player has a base with a robot factory, builds autonomous attack robots, captures neutral turrets, and wins by getting one of their own robots into the opponent's base. The deliverable is a working monorepo I can start with a single command and play in two browser tabs.
+Build a complete, runnable, web-based multiplayer game inspired by the *Precinct Assault* mode of Future Cop: L.A.P.D. (1998). Two players each pilot a hovering combat mech, but the match is won strategically: each player has a base with a robot factory, builds autonomous attack robots, captures neutral turrets, and wins by getting one of their own robots into the opponent's base. The deliverable is a working monorepo I can start with a single command and play in two browser tabs.
 
 ## Tech stack (use exactly this)
 
@@ -57,8 +57,8 @@ Build a complete, runnable, web-based multiplayer game inspired by the base-assa
 
 ### Robot factory & units
 - The factory is a building inside the own base. Build commands via hotkeys (1/2) plus a small always-visible build bar in the HUD showing cost, build time, and queue (max queue: 3).
-- **Small robot — "Tank":** cost 50, build time 5 s. Fast, 80 HP, light cannon (damages mechs, robots, and turrets). Spawns at the factory, drives out of the gate and follows the lane toward the enemy base.
-- **Large robot — "Heavy Tank":** cost 400, build time 15 s. Slow, 400 HP, heavy cannon with splash. Same behavior, much harder to stop.
+- **Small robot — "Hovertank":** cost 50, build time 5 s. Fast, 80 HP, light cannon (damages mechs, robots, and turrets). Spawns at the factory, drives out of the gate and follows the lane toward the enemy base.
+- **Large robot — "Dreadnought":** cost 200, build time 15 s. Slow, 400 HP, heavy cannon with splash. Same behavior, much harder to stop.
 - **Unit AI (keep it deliberately simple):** units follow a predefined waypoint lane (lane data lives in `shared`). While moving, they engage the nearest enemy entity in range (enemy robots > enemy turrets > enemy mech), stop to shoot, then continue. On reaching the enemy core pad → match over. No pathfinding algorithm — waypoints plus local steering/separation so units don't stack inside each other.
 - Unit cap: 8 robots per player alive at once (reject builds beyond that, greyed-out UI).
 
@@ -76,12 +76,12 @@ Build a complete, runnable, web-based multiplayer game inspired by the base-assa
 ### Match flow & feedback
 - Match timer counts up; no time limit needed in v1 (sudden death not required).
 - A **minimap** in the HUD corner is mandatory: bases, lanes, turret ownership colors, robots, both mechs. Without it the mode is unreadable.
-- Event feed (top of screen): "Turret captured", "Heavy Tank deployed", "Your base is under attack!". Audio is out of scope; visual feedback must compensate.
+- Event feed (top of screen): "Turret captured", "Dreadnought deployed", "Your base is under attack!". Audio is out of scope; visual feedback must compensate.
 - Victory/defeat screen with match duration and stats (robots built, robots destroyed, turret captures, kills), then back to lobby; rematch without restarting the server must work.
 
 ## Visual style
 
-- No external assets. Everything from Three.js primitives: low-poly mech (boxes/cylinders: legs, torso, gun arms), tanks as flat wedges, heavy tanks as bulky multi-part hulls, turrets as towers with rotating heads that visibly track targets.
+- No external assets. Everything from Three.js primitives: low-poly mech (boxes/cylinders: legs, torso, gun arms), hovertanks as flat wedges, dreadnoughts as bulky multi-part hulls, turrets as towers with rotating heads that visibly track targets.
 - Team colors via emissive accents: cyan vs. orange; neutral turrets grey. Late-90s sci-fi look: dark ground with subtle grid, fog, one directional light + ambient. Cheap particle effects for muzzle flash, rocket trails, explosions, and the capture progress ring.
 - HUD: health bar, heat meter, rocket pips, credits, build bar with queue, unit cap indicator, minimap, match timer, ping.
 
@@ -91,11 +91,11 @@ This project will be developed and debugged iteratively by an AI agent, so it mu
 
 ### Layer 1 — Headless simulation tests (Vitest)
 - Because the simulation core is pure and deterministic, unit tests can construct a match, inject inputs, and fast-forward thousands of ticks in milliseconds. No sockets, no browser.
-- Required unit/integration tests at minimum: mech movement & wall collision, gatling overheat cycle, rocket splash falloff, turret capture (progress, interruption, drain-to-neutral, recapture), economy (income, affordability validation, queue limits, unit cap), tank lane-following reaching the enemy core pad, win condition firing exactly once, and a determinism test (same seed + same inputs ⇒ identical final state hash).
+- Required unit/integration tests at minimum: mech movement & wall collision, gatling overheat cycle, rocket splash falloff, turret capture (progress, interruption, drain-to-neutral, recapture), economy (income, affordability validation, queue limits, unit cap), hovertank lane-following reaching the enemy core pad, win condition firing exactly once, and a determinism test (same seed + same inputs ⇒ identical final state hash).
 
 ### Layer 2 — Headless protocol tests (Vitest + real WebSockets)
 - Provide a reusable **bot client** (`packages/server/test/botClient.ts`): a Node-side class that speaks the real WebSocket protocol — join lobby, create/join room, ready, send inputs, build units, receive snapshots.
-- Integration tests boot the actual server on a random port, connect two bot clients, and play scripted matches, e.g.: bot A builds tanks, bot B idles ⇒ assert bot A wins within N seconds; disconnect mid-match ⇒ assert forfeit handling; invalid messages (unaffordable build, malformed JSON) ⇒ assert rejection without crashing the room.
+- Integration tests boot the actual server on a random port, connect two bot clients, and play scripted matches, e.g.: bot A builds hovertanks, bot B idles ⇒ assert bot A wins within N seconds; disconnect mid-match ⇒ assert forfeit handling; invalid messages (unaffordable build, malformed JSON) ⇒ assert rejection without crashing the room.
 - The server must accept a `TICK_MS` env override and a test balance preset so these tests run accelerated (full match in a few seconds of wall time).
 
 ### Layer 3 — End-to-end tests (Playwright)
@@ -103,7 +103,7 @@ This project will be developed and debugged iteratively by an AI agent, so it mu
 - Tests use **two browser contexts** in one test to simulate both players: full lobby flow (name → create room → second context joins → both ready → countdown → match starts), build flow (press hotkey ⇒ credits drop, queue UI updates, robot appears), and a full victory flow using the accelerated test balance preset (activated via `?test=1` query param), ending on the victory/defeat screens in the respective contexts, then back to lobby and rematch.
 - **Assertable state, not pixels.** Canvas pixels cannot be asserted, so the client must expose hooks:
   - Every DOM/UI element (lobby buttons, room list entries, build bar, credits, health, event feed, victory screen) carries a stable `data-testid`.
-  - A read-only `window.__game` object: current phase, tick, ping, credits, snapshot age, and a serialized entity list (positions, HP, ownership). Playwright asserts game logic through this object (e.g. "a tank entity owned by player A exists and its x increases").
+  - A read-only `window.__game` object: current phase, tick, ping, credits, snapshot age, and a serialized entity list (positions, HP, ownership). Playwright asserts game logic through this object (e.g. "a hovertank entity owned by player A exists and its x increases").
 - Playwright runs headless by default; failure artifacts (screenshot, trace) must be enabled.
 
 ### Layer 4 — Runtime debug tooling
