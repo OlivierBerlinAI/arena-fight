@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { GAME_MAP, laneWaypoints } from '@mech-arena-fight/shared';
 import type { Balance, Ownership, TurretSnap, Wall } from '@mech-arena-fight/shared';
 import { GRID_CENTER_HEX, GRID_HEX, GROUND_HEX, NEUTRAL_HEX, TEAM_HEX, teamHex } from './colors';
+import { HpBar } from './hpbar';
 
 const WALL_COLORS: Record<Wall['kind'], number> = {
   boundary: 0x222c3a,
@@ -27,6 +28,7 @@ interface TurretView {
   padR: number;
   rubble: THREE.Group;
   tower: THREE.Group;
+  hpBar: HpBar;
 }
 
 export class GameRenderer {
@@ -275,8 +277,13 @@ export class GameRenderer {
       rubble.visible = false;
       group.add(rubble);
 
+      // HP bar floating above the turret head.
+      const hpBar = new HpBar(2.4, 0.16);
+      hpBar.group.position.y = 4.3;
+      group.add(hpBar.group);
+
       this.scene.add(group);
-      this.turretViews.push({ group, head, headMat, baseMat, lampMat, ring, ringProgress: 0, padR, rubble, tower });
+      this.turretViews.push({ group, head, headMat, baseMat, lampMat, ring, ringProgress: 0, padR, rubble, tower, hpBar });
     });
   }
 
@@ -299,6 +306,10 @@ export class GameRenderer {
       const hpFrac = Math.max(0, Math.min(1, t.hp / this.turretMaxHp));
       const dim = 0.35 + 0.65 * hpFrac;
       view.baseMat.color.setHex(0x39455c).multiplyScalar(dim);
+
+      // HP bar above the turret (hidden while destroyed).
+      view.hpBar.group.visible = t.alive;
+      if (t.alive) view.hpBar.set(hpFrac);
 
       // capture progress arc
       const p = t.capProgress;
