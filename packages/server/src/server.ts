@@ -40,6 +40,8 @@ export interface StartServerOptions {
   maxConnections?: number;
   /** expose GET /debug/state. Default: DEBUG_STATE env (default true). */
   debugState?: boolean;
+  /** allow the debug tuning overlay (tuneMech). Default: ALLOW_TUNING env, else true unless NODE_ENV=production. */
+  allowTuning?: boolean;
 }
 
 export interface RunningServer {
@@ -80,12 +82,16 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Runnin
   const forcedPreset = opts.balancePreset ?? envPreset(logger);
   const debugStateEnabled = opts.debugState ?? envBool('DEBUG_STATE', true);
   const maxConnections = opts.maxConnections ?? envNumber('MAX_CONNECTIONS') ?? 0;
+  // Tuning overlay is a dev tool: on locally, off in the production image
+  // (NODE_ENV=production) unless ALLOW_TUNING is explicitly set.
+  const allowTuning = opts.allowTuning ?? envBool('ALLOW_TUNING', process.env.NODE_ENV !== 'production');
   const lobby = new LobbyManager({
     logger,
     tickRate,
     tickMs,
     countdownSecondMs: opts.countdownSecondMs ?? 1000,
     forcedPreset,
+    allowTuning,
   });
 
   const httpServer = http.createServer((req, res) => {

@@ -23,6 +23,14 @@ import { TuningOverlay } from './tuning-overlay';
 
 installGameHook();
 
+/**
+ * The movement tuning overlay is a dev tool. It's on for local `npm run dev`
+ * (Vite dev) and for a build made with VITE_ENABLE_TUNING=1, but compiled out
+ * of a normal production build. The server independently rejects tuneMech
+ * unless ALLOW_TUNING is set, so production play can't be re-tuned.
+ */
+const TUNING_ENABLED = import.meta.env.DEV || import.meta.env.VITE_ENABLE_TUNING === '1';
+
 const SCREEN_IDS: Record<string, string> = {
   name: 'screen-name',
   lobby: 'screen-lobby',
@@ -93,13 +101,15 @@ class App {
   private readonly controlsToggle = new ControlSchemeToggle(byId('controls-scheme-toggle'));
   private readonly menuSchemeToggle = new ControlSchemeToggle(byId('menu-scheme-toggle'));
 
-  private readonly tuningOverlay = new TuningOverlay({
-    onMechChange: (key: MechTuneKey, value: number) => {
-      this.net.send({ type: 'tuneMech', key, value });
-      this.match?.applyMechTune({ [key]: value } as Partial<MechTune>); // optimistic; server echo confirms
-    },
-    getMechValue: (key: MechTuneKey) => this.match?.balance.mech[key] ?? DEFAULT_BALANCE.mech[key],
-  });
+  private readonly tuningOverlay: TuningOverlay | null = TUNING_ENABLED
+    ? new TuningOverlay({
+        onMechChange: (key: MechTuneKey, value: number) => {
+          this.net.send({ type: 'tuneMech', key, value });
+          this.match?.applyMechTune({ [key]: value } as Partial<MechTune>); // optimistic; server echo confirms
+        },
+        getMechValue: (key: MechTuneKey) => this.match?.balance.mech[key] ?? DEFAULT_BALANCE.mech[key],
+      })
+    : null;
 
   constructor() {
     this.nameScreen.focus();
@@ -107,12 +117,14 @@ class App {
     this.wireGameMenu();
     this.wireControlScheme();
     // F2 toggles the movement tuning overlay (non-modal — driving still works).
-    window.addEventListener('keydown', (e) => {
-      if (e.code === 'F2') {
-        e.preventDefault();
-        this.tuningOverlay.toggle();
-      }
-    });
+    if (this.tuningOverlay) {
+      window.addEventListener('keydown', (e) => {
+        if (e.code === 'F2') {
+          e.preventDefault();
+          this.tuningOverlay?.toggle();
+        }
+      });
+    }
     // Begin the menu theme right away; it stays silent until the first gesture
     // unlocks the audio context, then fades in.
     this.updateMusic(this.phase);
@@ -360,7 +372,7 @@ class App {
       case 'mechTuned':
         // Debug tuning echo: keep prediction + the overlay in sync with the sim.
         this.match?.applyMechTune(msg.mech);
-        this.tuningOverlay.syncMech();
+        this.tuningOverlay?.syncMech();
         break;
 
       case 'matchEnd':

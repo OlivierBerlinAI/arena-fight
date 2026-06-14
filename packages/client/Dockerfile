@@ -11,6 +11,10 @@ RUN npm ci --ignore-scripts
 COPY tsconfig.base.json ./
 COPY packages/shared ./packages/shared
 COPY packages/client ./packages/client
+# Dev images can bake in the tuning overlay: `docker build --build-arg ENABLE_TUNING=1`.
+# Production builds leave it empty so the overlay is compiled out.
+ARG ENABLE_TUNING=
+ENV VITE_ENABLE_TUNING=$ENABLE_TUNING
 RUN npm run build -w @mech-arena-fight/client
 
 # --- serve the build with an unprivileged nginx (listens on 8080, runs as 101)-

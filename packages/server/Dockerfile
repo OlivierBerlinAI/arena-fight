@@ -10,6 +10,8 @@ COPY packages/client/package.json packages/client/package.json
 RUN npm ci --omit=dev --ignore-scripts
 
 # --- runtime ------------------------------------------------------------------
+# NODE_ENV=production disables the debug tuning overlay's tuneMech handler. Run a
+# dev container with `-e ALLOW_TUNING=1` to re-enable live stat tuning.
 FROM node:22-slim AS runtime
 ENV NODE_ENV=production \
     PORT=8080 \

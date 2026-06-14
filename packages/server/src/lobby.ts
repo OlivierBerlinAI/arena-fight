@@ -23,6 +23,8 @@ export interface LobbyOptions {
   countdownSecondMs: number;
   /** when set (BALANCE_PRESET env), every room is forced to this preset */
   forcedPreset?: BalancePresetName | undefined;
+  /** allow the debug tuning overlay's tuneMech messages (dev only) */
+  allowTuning: boolean;
 }
 
 export class LobbyManager {
@@ -31,6 +33,7 @@ export class LobbyManager {
   private readonly tickMs: number;
   private readonly countdownSecondMs: number;
   private readonly forcedPreset: BalancePresetName | undefined;
+  private readonly allowTuning: boolean;
   private readonly clients = new Map<string, ClientConn>();
   private readonly rooms = new Map<string, Room>();
 
@@ -40,6 +43,7 @@ export class LobbyManager {
     this.tickMs = opts.tickMs;
     this.countdownSecondMs = opts.countdownSecondMs;
     this.forcedPreset = opts.forcedPreset;
+    this.allowTuning = opts.allowTuning;
   }
 
   // -------------------------------------------------------------------------
@@ -165,6 +169,7 @@ export class LobbyManager {
         return;
       }
       case 'tuneMech': {
+        if (!this.allowTuning) return; // dev-only; ignored in production
         this.roomOf(client)?.tuneMech(msg.key, msg.value);
         return;
       }
