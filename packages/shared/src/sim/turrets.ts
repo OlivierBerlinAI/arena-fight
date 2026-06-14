@@ -1,7 +1,12 @@
-import { distSq } from '../math.js';
+import { angleDelta, distSq, rotateToward } from '../math.js';
 import type { Balance } from '../balance.js';
 import { spawnProjectile } from './mech.js';
 import type { SimEvent, SimState, TurretState, PlayerIndex } from './state.js';
+
+/** Fire once the target is within this angle of the head's facing (radians). */
+const AIM_TOLERANCE_RAD = 0.12;
+/** Turrets begin tracking targets out to this multiple of their firing range. */
+const TURRET_AIM_RANGE_FACTOR = 1.2;
 
 /**
  * Neutral turret towers: mech-only capture via the pad at their foot, then
@@ -106,14 +111,17 @@ function stepFire(turret: TurretState, state: SimState, balance: Balance): void 
   }
   const tb = balance.turret;
   const enemy = (1 - turret.owner) as PlayerIndex;
-  const r2 = tb.range * tb.range;
+  // Start tracking targets a bit beyond firing range — the turret "knows" where
+  // you are and swings to face you before you're close enough to be shot.
+  const aimRange = tb.range * TURRET_AIM_RANGE_FACTOR;
+  const aimR2 = aimRange * aimRange;
 
   let targetPos: { x: number; z: number } | null = null;
   let bestD = Infinity;
   for (const u of state.units) {
     if (u.owner !== enemy) continue;
     const d = distSq(turret.pos, u.pos);
-    if (d <= r2 && d < bestD) {
+    if (d <= aimR2 && d < bestD) {
       bestD = d;
       targetPos = u.pos;
     }
@@ -121,15 +129,21 @@ function stepFire(turret: TurretState, state: SimState, balance: Balance): void 
   const mech = state.mechs[enemy];
   if (mech.alive && state.tick >= mech.protectedUntilTick) {
     const d = distSq(turret.pos, mech.pos);
-    if (d <= r2 && d < bestD) {
+    if (d <= aimR2 && d < bestD) {
       bestD = d;
       targetPos = mech.pos;
     }
   }
   if (!targetPos) return;
 
-  turret.headYaw = Math.atan2(targetPos.z - turret.pos.z, targetPos.x - turret.pos.x);
-  if (state.tick >= turret.fireReadyAtTick) {
+  // Rotate the head toward the target instead of snapping to it.
+  const desired = Math.atan2(targetPos.z - turret.pos.z, targetPos.x - turret.pos.x);
+  turret.headYaw = rotateToward(turret.headYaw, desired, tb.turnRate / balance.tickRate);
+
+  // Fire only once actually in range AND lined up on the target.
+  const inRange = bestD <= tb.range * tb.range;
+  const aligned = Math.abs(angleDelta(turret.headYaw, desired)) <= AIM_TOLERANCE_RAD;
+  if (inRange && aligned && state.tick >= turret.fireReadyAtTick) {
     spawnProjectile(state, {
       owner: turret.owner,
       kind: 'turret',

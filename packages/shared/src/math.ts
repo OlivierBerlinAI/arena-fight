@@ -167,3 +167,15 @@ export function segmentAABBHit(a: Vec2, b: Vec2, box: AABB): number | null {
   }
   return tmin;
 }
+
+/** Smallest signed angle from `a` to `b`, in (-π, π]. */
+export function angleDelta(a: number, b: number): number {
+  return Math.atan2(Math.sin(b - a), Math.cos(b - a));
+}
+
+/** Rotate `current` toward `target` by at most `maxStep`, taking the short way. */
+export function rotateToward(current: number, target: number, maxStep: number): number {
+  const d = angleDelta(current, target);
+  if (Math.abs(d) <= maxStep) return target;
+  return current + Math.sign(d) * maxStep;
+}

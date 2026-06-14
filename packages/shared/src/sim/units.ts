@@ -1,4 +1,4 @@
-import { distSq } from '../math.js';
+import { angleDelta, distSq, rotateToward } from '../math.js';
 import type { Balance } from '../balance.js';
 import { laneWaypoints } from '../map.js';
 import { collideWithStatics } from './collision.js';
@@ -6,6 +6,10 @@ import { spawnProjectile } from './mech.js';
 import type { SimState, UnitState } from './state.js';
 
 const WAYPOINT_REACHED_DIST = 1.5;
+/** Fire once the target is within this angle of the unit's facing (radians). */
+const AIM_TOLERANCE_RAD = 0.12;
+/** Drive only once facing within this angle of the travel direction (radians). */
+const MOVE_ALIGN_RAD = 0.5;
 
 type Target =
   | { kind: 'unit'; key: string; pos: { x: number; z: number } }
@@ -27,8 +31,11 @@ export function stepUnits(state: SimState, balance: Balance): void {
       unit.targetKey = target.key;
       const dx = target.pos.x - unit.pos.x;
       const dz = target.pos.z - unit.pos.z;
-      unit.yaw = Math.atan2(dz, dx);
-      if (state.tick >= unit.fireReadyAtTick) {
+      // Rotate to face the target before firing instead of snapping onto it.
+      const desired = Math.atan2(dz, dx);
+      unit.yaw = rotateToward(unit.yaw, desired, ub.turnRate * DT);
+      const aligned = Math.abs(angleDelta(unit.yaw, desired)) <= AIM_TOLERANCE_RAD;
+      if (aligned && state.tick >= unit.fireReadyAtTick) {
         spawnProjectile(state, {
           owner: unit.owner,
           kind: unit.type === 'dreadnought' ? 'unitHeavy' : 'unitLight',
@@ -59,10 +66,15 @@ export function stepUnits(state: SimState, balance: Balance): void {
       continue;
     }
     if (d > 1e-6) {
-      const step = Math.min(ub.speed * DT, d);
-      unit.pos.x += (dx / d) * step;
-      unit.pos.z += (dz / d) * step;
-      unit.yaw = Math.atan2(dz, dx);
+      // Turn back toward the travel direction; only drive once roughly facing it
+      // (so a unit that turned to shoot first swings back before moving on).
+      const desired = Math.atan2(dz, dx);
+      unit.yaw = rotateToward(unit.yaw, desired, ub.turnRate * DT);
+      if (Math.abs(angleDelta(unit.yaw, desired)) <= MOVE_ALIGN_RAD) {
+        const step = Math.min(ub.speed * DT, d);
+        unit.pos.x += (dx / d) * step;
+        unit.pos.z += (dz / d) * step;
+      }
     }
     collideWithStatics(unit.pos, ub.radius, state, balance);
   }

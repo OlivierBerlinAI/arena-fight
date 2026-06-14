@@ -126,4 +126,25 @@ describe('turret capture', () => {
     expect(shots).toBeGreaterThanOrEqual(2);
     expect(sim.state.mechs[1].hp).toBeLessThan(sim.balance.mech.maxHp);
   });
+
+  it('rotates to face a target before it can fire (no instant lock-on)', () => {
+    const sim = new GameSimulation({ seed: 27 });
+    tickN(sim, sim.balance.mech.spawnProtectionTicks + 1);
+    sim.state.turrets[0].owner = 0;
+    teleportMech(sim, 1, { x: -42, z: 0 }); // in range; bearing ~0 from the turret
+    sim.state.turrets[0].headYaw = Math.PI; // force the head to point the other way
+    const fresh = projectileTracker(sim, 'turret');
+
+    // Still slewing around on the first tick — it must not fire instantly.
+    sim.tick();
+    expect(fresh().length).toBe(0);
+
+    // Given time to rotate onto the target, it lines up and opens fire.
+    let shots = 0;
+    for (let i = 0; i < 120; i++) {
+      sim.tick();
+      shots += fresh().length;
+    }
+    expect(shots).toBeGreaterThan(0);
+  });
 });

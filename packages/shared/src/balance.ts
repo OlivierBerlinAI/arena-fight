@@ -34,6 +34,8 @@ export interface UnitBalance {
   range: number;
   fireIntervalTicks: number;
   projectileSpeed: number;
+  /** how fast the unit rotates to aim at a target, radians per second */
+  turnRate: number;
 }
 
 export interface Balance {
@@ -111,6 +113,8 @@ export interface Balance {
     damage: number;
     fireIntervalTicks: number;
     projectileSpeed: number;
+    /** how fast the head rotates to aim at a target, radians per second */
+    turnRate: number;
     /** collision/body radius of the tower */
     radius: number;
     /** radius of the capture pad around the tower */
@@ -184,6 +188,7 @@ function buildDefault(T: number): Balance {
         range: 11,
         fireIntervalTicks: Math.round(0.8 * T),
         projectileSpeed: 45,
+        turnRate: 3.5, // nimble: swings its gun around quickly
       },
       dreadnought: {
         cost: 400,
@@ -196,6 +201,7 @@ function buildDefault(T: number): Balance {
         range: 13,
         fireIntervalTicks: Math.round(1.6 * T),
         projectileSpeed: 30,
+        turnRate: 1.6, // heavy: slow to bring its guns to bear
       },
     },
     unitCap: 8,
@@ -208,6 +214,7 @@ function buildDefault(T: number): Balance {
       damage: 8,
       fireIntervalTicks: Math.round(0.6 * T),
       projectileSpeed: 55,
+      turnRate: 2.4, // sweeps its head around to track a target
       radius: 1.3,
       padRadius: 3.5,
     },
