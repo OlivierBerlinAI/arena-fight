@@ -128,6 +128,14 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Runnin
 
   // Heartbeat: terminate sockets that stop answering pings, so dead/half-open
   // connections don't pile up on an internet-facing server.
+  //
+  // FOLLOW-UP (vigilant-lovelace tick-rate/prediction work): a single missed
+  // pong terminates immediately. A client that briefly saturates — e.g. the
+  // busy player at the 100 Hz default on a weak device — can be dropped
+  // mid-match even though it's still alive (observed in e2e under software
+  // WebGL; see playwright.config.ts, which pins e2e to 30 Hz to dodge it).
+  // Consider requiring 2+ consecutive missed pongs before terminate and/or a
+  // client-side reconnect path, so a transient stall doesn't end the match.
   const heartbeat = setInterval(() => {
     for (const ws of wss.clients) {
       const live = ws as WebSocket & { isAlive?: boolean };
