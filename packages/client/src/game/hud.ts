@@ -138,10 +138,6 @@ export class Hud {
         return ev.player === me
           ? { text: 'Turret captured', tone: 'good' }
           : { text: 'Enemy captured a turret', tone: 'bad' };
-      case 'turretNeutralized':
-        return ev.byPlayer === me
-          ? { text: 'Enemy turret neutralized', tone: 'good' }
-          : { text: 'Your turret was neutralized', tone: 'bad' };
       case 'turretDestroyed':
         if (ev.byPlayer === me) return { text: 'You destroyed a turret', tone: 'good' };
         if (ev.previousOwner === me) return { text: 'Your turret was destroyed', tone: 'bad' };

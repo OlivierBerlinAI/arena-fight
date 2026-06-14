@@ -10,9 +10,9 @@ const TURRET_AIM_RANGE_FACTOR = 1.2;
 
 /**
  * Neutral turret towers: mech-only capture via the pad at their foot, then
- * they shoot enemies and pay +1 credit/s. Capturing an enemy-owned turret
- * drains it to neutral first, then flips it. Destroyed turrets respawn
- * neutral after a delay.
+ * they shoot enemies and pay +1 credit/s. Only neutral turrets can be captured —
+ * a turret that already belongs to a team can't be converted on the pad; you
+ * have to shoot it down first, and it respawns neutral after a delay.
  */
 export function stepTurrets(state: SimState, balance: Balance, events: SimEvent[]): void {
   for (const turret of state.turrets) {
@@ -70,17 +70,10 @@ function stepCapture(
   }
 
   if (turret.owner !== -1) {
-    // Enemy stands on an owned turret: drain the owner's hold toward neutral.
+    // Owned by the enemy. A turret already on a team can't be converted on the
+    // pad — standing here does nothing. Shoot it down to reset it to neutral.
     turret.capOwner = turret.owner;
-    turret.capProgress -= 1;
-    if (turret.capProgress <= 0) {
-      const previousOwner = turret.owner as PlayerIndex;
-      turret.owner = -1;
-      turret.capOwner = p;
-      turret.capProgress = 0;
-      events.push({ type: 'turretNeutralized', turretId: turret.id, byPlayer: p });
-      void previousOwner;
-    }
+    turret.capProgress = balance.turret.captureTicks;
     return;
   }
 

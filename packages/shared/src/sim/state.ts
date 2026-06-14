@@ -135,7 +135,6 @@ export interface SimState {
 export type SimEvent =
   | { type: 'matchEnd'; winner: PlayerIndex; byUnitId: number }
   | { type: 'turretCaptured'; turretId: number; player: PlayerIndex }
-  | { type: 'turretNeutralized'; turretId: number; byPlayer: PlayerIndex }
   | { type: 'turretDestroyed'; turretId: number; byPlayer: PlayerIndex; previousOwner: Ownership }
   | { type: 'turretRespawned'; turretId: number }
   | { type: 'unitQueued'; player: PlayerIndex; unit: UnitType }
