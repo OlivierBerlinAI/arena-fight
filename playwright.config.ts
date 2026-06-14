@@ -35,7 +35,12 @@ export default defineConfig({
       // identical at any tick rate (balance is rescaled by tickRate), so this
       // only changes pacing/fidelity, not behaviour under test. Production stays
       // at 100 Hz. See the heartbeat-grace follow-up in packages/server/src/server.ts.
-      command: 'TICK_RATE=30 npm run dev -w @mech-arena-fight/server',
+      // TICK_MS=8 paces the sim ~4x faster than real time (wall-clock only, same
+      // semantics) so full matches play out in a fraction of the wall time. Safe
+      // because the clients run with ?norender, so there's no per-frame cost to
+      // keep up with at the higher tick rate. State-based waits adapt; the few
+      // fixed key-holds (controls.spec) are kept short enough not to over-rotate.
+      command: 'TICK_RATE=30 TICK_MS=8 npm run dev -w @mech-arena-fight/server',
       url: 'http://localhost:8080/health',
       reuseExistingServer: !process.env.CI,
       stdout: 'ignore',

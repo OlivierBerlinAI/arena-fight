@@ -112,9 +112,11 @@ test.describe('keyboard controls', () => {
     await waitOwnProjectile('rocket');
     await pageA.mouse.up({ button: 'right' });
 
-    // A turns the mech (walker) — yaw changes by a clear margin.
+    // A turns the mech (walker) — yaw changes by a clear margin. Keep the hold
+    // short: the e2e sim runs ~4x real time, so a long hold would over-rotate
+    // past π and make angleDiff wrap back toward 0.
     const beforeWalkerTurn = await ownMech(pageA);
-    await holdKey(pageA, 'a', 700);
+    await holdKey(pageA, 'a', 250);
     const afterWalkerTurn = await ownMech(pageA);
     expect(angleDiff(afterWalkerTurn.yaw, beforeWalkerTurn.yaw)).toBeGreaterThan(0.5);
 
@@ -132,7 +134,7 @@ test.describe('keyboard controls', () => {
       { timeout: 8000, polling: 100 }
     );
     const beforeHoverTurn = await ownMech(pageA);
-    await holdKey(pageA, 'd', 700);
+    await holdKey(pageA, 'd', 250); // short hold — see the walker-turn note above
     const afterHoverTurn = await ownMech(pageA);
     expect(afterHoverTurn.mode).toBe('hover');
     expect(angleDiff(afterHoverTurn.yaw, beforeHoverTurn.yaw)).toBeGreaterThan(0.5);
