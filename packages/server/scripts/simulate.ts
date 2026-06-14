@@ -11,7 +11,7 @@
  *
  * Run from the repo root: npm run simulate
  */
-import { SIM_TICK_RATE, getBalance } from '@precinct/shared';
+import { getBalance } from '@precinct/shared';
 import type { SimEvent } from '@precinct/shared';
 import { isLogLevel } from '../src/logger';
 import { startServer } from '../src/server';
@@ -123,7 +123,7 @@ async function main(): Promise<void> {
 
     const winnerName = names[end.winner];
     const wallSeconds = ((Date.now() - wallStart) / 1000).toFixed(1);
-    const simSeconds = (end.durationTicks / SIM_TICK_RATE).toFixed(1);
+    const simSeconds = (end.durationTicks / ma.tickRate).toFixed(1);
     console.log('---');
     console.log(`[simulate] outcome: ${winnerName} (p${end.winner}) wins — reason=${end.reason}`);
     console.log(

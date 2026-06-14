@@ -6,14 +6,18 @@
  *   GET /debug/state  → JSON dump of all rooms (players, tick, phase, latest
  *                       snapshot, economy) and the lobby client count.
  *
- * Env overrides (opts always win): PORT, TICK_MS (wall-clock pacing only),
- * LOG_LEVEL, BALANCE_PRESET (forces every room to that preset).
+ * Env overrides (opts always win): PORT, TICK_RATE (simulation Hz), TICK_MS
+ * (wall-clock pacing only), LOG_LEVEL, BALANCE_PRESET (forces every room to that
+ * preset).
  */
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocketServer, WebSocket } from 'ws';
-import { DEFAULT_TICK_MS, isBalancePresetName } from '@precinct/shared';
+import { isBalancePresetName } from '@precinct/shared';
 import type { BalancePresetName } from '@precinct/shared';
+
+/** Default simulation tick rate (Hz) when TICK_RATE / opts.tickRate are unset. */
+const DEFAULT_TICK_RATE = 100;
 import { attachConnection } from './connection';
 import { LobbyManager } from './lobby';
 import { createLogger, logLevelFromEnv } from './logger';
@@ -22,7 +26,9 @@ import type { Logger, LogLevel } from './logger';
 export interface StartServerOptions {
   /** listen port; 0 = ephemeral (tests). Default: PORT env or 8080. */
   port?: number;
-  /** wall-clock ms per simulation tick — pacing only. Default: TICK_MS env or ~33.3. */
+  /** simulation ticks per second (Hz) — scales the balance. Default: TICK_RATE env or 100. */
+  tickRate?: number;
+  /** wall-clock ms per simulation tick — pacing only. Default: TICK_MS env or 1000/tickRate. */
   tickMs?: number;
   /** Default: LOG_LEVEL env or 'info'. */
   logLevel?: LogLevel;
@@ -67,12 +73,16 @@ function envPreset(logger: Logger): BalancePresetName | undefined {
 
 export async function startServer(opts: StartServerOptions = {}): Promise<RunningServer> {
   const logger = createLogger(opts.logLevel ?? logLevelFromEnv());
-  const tickMs = opts.tickMs ?? envNumber('TICK_MS') ?? DEFAULT_TICK_MS;
+  const tickRate = opts.tickRate ?? envNumber('TICK_RATE') ?? DEFAULT_TICK_RATE;
+  // Real-time pacing follows the tick rate; TICK_MS still overrides it (tests
+  // shrink it to fast-forward, scripts use it to run faster than real time).
+  const tickMs = opts.tickMs ?? envNumber('TICK_MS') ?? 1000 / tickRate;
   const forcedPreset = opts.balancePreset ?? envPreset(logger);
   const debugStateEnabled = opts.debugState ?? envBool('DEBUG_STATE', true);
   const maxConnections = opts.maxConnections ?? envNumber('MAX_CONNECTIONS') ?? 0;
   const lobby = new LobbyManager({
     logger,
+    tickRate,
     tickMs,
     countdownSecondMs: opts.countdownSecondMs ?? 1000,
     forcedPreset,
@@ -143,6 +153,7 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Runnin
   const port = (httpServer.address() as AddressInfo).port;
   logger.info('server listening', {
     port,
+    tickRate,
     tickMs,
     forcedPreset: forcedPreset ?? null,
     debugState: debugStateEnabled,

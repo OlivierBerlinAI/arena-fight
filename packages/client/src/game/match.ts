@@ -18,6 +18,7 @@ import type { GameEntityInfo } from '../testhook';
 import { GameRenderer } from './renderer';
 import { EntityManager } from './entities';
 import { SnapshotBuffer } from './interpolation';
+import { LocalMechPredictor } from './prediction';
 import { InputManager } from './input';
 import { ChaseCamera } from './camera';
 import { Hud } from './hud';
@@ -44,6 +45,7 @@ export class MatchController {
   private readonly hud: Hud;
   private readonly minimap: Minimap;
   private readonly debug = new DebugOverlay();
+  private readonly predictor = new LocalMechPredictor();
 
   private raf = 0;
   private lastFrame = performance.now();
@@ -67,7 +69,7 @@ export class MatchController {
     readonly cfg: MatchConfig,
     private readonly sound: SoundEngine
   ) {
-    this.balance = getBalance(cfg.preset);
+    this.balance = getBalance(cfg.preset, cfg.tickRate);
     this.buffer = new SnapshotBuffer(cfg.tickMs);
     this.renderer = new GameRenderer(byId('canvas-root'), this.balance);
     this.entities = new EntityManager(this.renderer.scene, this.balance);
@@ -137,17 +139,36 @@ export class MatchController {
     const latest = this.buffer.latest;
     if (view && latest) {
       const timeSec = now / 1000;
+      const me = this.cfg.playerIndex;
+      const mechSnap = latest.mechs[me];
+
+      // Local mech: client-side prediction instead of the delayed interpolation
+      // view. Advance the input heading first (aim projects from the predicted
+      // spot), then re-derive the present pose from the freshest snapshot + the
+      // current input and render that — so steering feels immediate.
+      if (mechSnap) {
+        const aim = this.predictor.initialized
+          ? { x: this.predictor.x, z: this.predictor.z }
+          : { x: mechSnap.x, z: mechSnap.z };
+        this.input.update({ x: aim.x, z: aim.z, yaw: mechSnap.yaw, alive: mechSnap.alive }, dt);
+        const aheadMs = (this.buffer.snapshotAge(now) ?? 0) + (this.net.rtt ?? 0) / 2;
+        const myMech = this.predictor.update(
+          mechSnap,
+          latest.turrets,
+          aheadMs,
+          this.input.currentInput(),
+          this.input.heading,
+          this.balance,
+          dt
+        );
+        view.mechs[me] = myMech;
+        this.chase.update(myMech, dt);
+      }
+
       this.entities.syncView(view, timeSec, dt);
       this.renderer.updateTurrets(view.turrets, timeSec);
 
-      const myMech = view.mechs[this.cfg.playerIndex];
-      if (myMech) {
-        this.chase.update(myMech, dt);
-        this.input.update(myMech, dt);
-      }
-
-      const player = latest.players[this.cfg.playerIndex];
-      const mechSnap = latest.mechs[this.cfg.playerIndex];
+      const player = latest.players[me];
       if (player && mechSnap) {
         this.hud.update(latest.tick, mechSnap, player, this.net.rtt);
       }

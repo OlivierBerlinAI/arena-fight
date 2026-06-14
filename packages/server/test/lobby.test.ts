@@ -62,7 +62,7 @@ describe('lobby flow', () => {
 
     expect(ma.seed).toBe(mb.seed);
     expect(ma.preset).toBe('default');
-    expect(ma.tickRate).toBe(30);
+    expect(ma.tickRate).toBe(100); // server default (TICK_RATE)
     expect(ma.tickMs).toBeGreaterThan(0);
     expect(new Set([ma.playerIndex, mb.playerIndex])).toEqual(new Set([0, 1]));
 
@@ -94,5 +94,24 @@ describe('lobby flow', () => {
     a.ready();
     b.ready();
     await expect(start).resolves.toMatchObject({ type: 'matchStart' });
+  });
+
+  it('serves a configurable tick rate (opts.tickRate / TICK_RATE) in matchStart', async () => {
+    // A dedicated server overrides the default 100 Hz with 50 Hz.
+    const slow = await bootTestServer({ tickRate: 50 });
+    const a = await BotClient.connect(slow.url, 'Ada');
+    const b = await BotClient.connect(slow.url, 'Bo');
+    try {
+      const room = await a.createRoom({ roomName: 'rate-test', preset: 'default' });
+      await b.joinRoom(room.id);
+      const startA = a.waitForMatchStart();
+      a.ready();
+      b.ready();
+      const ma = await startA;
+      expect(ma.tickRate).toBe(50);
+    } finally {
+      await Promise.all([a.close(), b.close()]);
+      await slow.close();
+    }
   });
 });

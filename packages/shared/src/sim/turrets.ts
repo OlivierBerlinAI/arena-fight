@@ -1,5 +1,4 @@
 import { distSq } from '../math.js';
-import { SIM_TICK_RATE } from '../balance.js';
 import type { Balance } from '../balance.js';
 import { spawnProjectile } from './mech.js';
 import type { SimEvent, SimState, TurretState, PlayerIndex } from './state.js';
@@ -139,7 +138,7 @@ function stepFire(turret: TurretState, state: SimState, balance: Balance): void 
       speed: tb.projectileSpeed,
       damage: tb.damage,
       splashRadius: 0,
-      ttlTicks: Math.max(2, Math.ceil((tb.range / tb.projectileSpeed) * SIM_TICK_RATE) + 2),
+      ttlTicks: Math.max(2, Math.ceil((tb.range / tb.projectileSpeed) * balance.tickRate) + 2),
       muzzleOffset: tb.radius + 0.4,
     });
     turret.fireReadyAtTick = state.tick + tb.fireIntervalTicks;

@@ -1,5 +1,5 @@
 import { distSq, pointInAABB } from '../math.js';
-import { DEFAULT_BALANCE, SIM_TICK_RATE } from '../balance.js';
+import { DEFAULT_BALANCE } from '../balance.js';
 import type { Balance } from '../balance.js';
 import { GAME_MAP } from '../map.js';
 import { PRNG } from '../prng.js';
@@ -12,8 +12,6 @@ import { stepTurrets } from './turrets.js';
 import { stepProjectiles } from './projectiles.js';
 import { separateMovers } from './collision.js';
 import type { Snapshot } from '../protocol.js';
-
-const BASE_ATTACK_WARN_INTERVAL = 5 * SIM_TICK_RATE;
 
 export interface SimOptions {
   seed: number;
@@ -88,10 +86,11 @@ export class GameSimulation {
 
   private warnBaseAttacks(events: SimEvent[]): void {
     const state = this.state;
+    const warnInterval = 5 * this.balance.tickRate;
     for (const player of state.players) {
       const zone = GAME_MAP.bases[player.index].zone;
       const intruder = state.units.some((u) => u.owner !== player.index && pointInAABB(u.pos, zone));
-      if (intruder && state.tick - player.lastBaseAttackWarnTick >= BASE_ATTACK_WARN_INTERVAL) {
+      if (intruder && state.tick - player.lastBaseAttackWarnTick >= warnInterval) {
         player.lastBaseAttackWarnTick = state.tick;
         events.push({ type: 'baseUnderAttack', player: player.index });
       }

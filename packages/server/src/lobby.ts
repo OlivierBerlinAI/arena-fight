@@ -15,6 +15,8 @@ import { Room } from './room';
 
 export interface LobbyOptions {
   logger: Logger;
+  /** simulation ticks per second (Hz) — scales the balance for every room */
+  tickRate: number;
   /** wall-clock ms per simulation tick */
   tickMs: number;
   /** wall-clock ms per countdown second */
@@ -25,6 +27,7 @@ export interface LobbyOptions {
 
 export class LobbyManager {
   readonly logger: Logger;
+  private readonly tickRate: number;
   private readonly tickMs: number;
   private readonly countdownSecondMs: number;
   private readonly forcedPreset: BalancePresetName | undefined;
@@ -33,6 +36,7 @@ export class LobbyManager {
 
   constructor(opts: LobbyOptions) {
     this.logger = opts.logger;
+    this.tickRate = opts.tickRate;
     this.tickMs = opts.tickMs;
     this.countdownSecondMs = opts.countdownSecondMs;
     this.forcedPreset = opts.forcedPreset;
@@ -86,6 +90,7 @@ export class LobbyManager {
           id: this.newRoomId(),
           name: msg.roomName ?? `${client.name ?? 'someone'}'s room`,
           preset,
+          tickRate: this.tickRate,
           tickMs: this.tickMs,
           countdownSecondMs: this.countdownSecondMs,
           logger: this.logger,

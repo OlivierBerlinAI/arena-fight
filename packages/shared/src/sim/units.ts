@@ -1,12 +1,10 @@
 import { distSq } from '../math.js';
-import { SIM_TICK_RATE } from '../balance.js';
 import type { Balance } from '../balance.js';
 import { laneWaypoints } from '../map.js';
 import { collideWithStatics } from './collision.js';
 import { spawnProjectile } from './mech.js';
 import type { SimState, UnitState } from './state.js';
 
-const DT = 1 / SIM_TICK_RATE;
 const WAYPOINT_REACHED_DIST = 1.5;
 
 type Target =
@@ -21,6 +19,7 @@ type Target =
  * (checked in the simulation's win step).
  */
 export function stepUnits(state: SimState, balance: Balance): void {
+  const DT = 1 / balance.tickRate;
   for (const unit of state.units) {
     const ub = balance.units[unit.type];
     const target = acquireTarget(unit, state, ub.range);
@@ -40,7 +39,7 @@ export function stepUnits(state: SimState, balance: Balance): void {
           splashRadius: ub.splashRadius,
           ttlTicks: Math.max(
             2,
-            Math.ceil((Math.sqrt(dx * dx + dz * dz) / ub.projectileSpeed) * SIM_TICK_RATE) + 2
+            Math.ceil((Math.sqrt(dx * dx + dz * dz) / ub.projectileSpeed) * balance.tickRate) + 2
           ),
           muzzleOffset: ub.radius + 0.3,
         });

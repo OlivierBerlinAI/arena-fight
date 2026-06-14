@@ -3,7 +3,6 @@
  * (costs and build times from the active balance preset), the build queue and
  * the event feed (phrased from the local player's perspective).
  */
-import { SIM_TICK_RATE } from '@precinct/shared';
 import type { Balance, MechSnap, PlayerIndex, PlayerSnap, SimEvent, UnitType } from '@precinct/shared';
 import { byId, el, formatTime } from '../dom';
 
@@ -42,7 +41,7 @@ export class Hud {
   ) {
     const fmt = (unit: UnitType): string => {
       const u = balance.units[unit];
-      return `${u.cost}¢ · ${Math.round((u.buildTicks / SIM_TICK_RATE) * 10) / 10}s`;
+      return `${u.cost}¢ · ${Math.round((u.buildTicks / balance.tickRate) * 10) / 10}s`;
     };
     byId('build-hovertank-info').textContent = fmt('hovertank');
     byId('build-dreadnought-info').textContent = fmt('dreadnought');
