@@ -5,8 +5,9 @@
  * and aggression. No randomness in the SIM — the bot is just an input source, so
  * Math.random here is fine (like a human's imperfect play).
  */
-import { GAME_MAP } from '@mech-arena-fight/shared';
+import { GAME_MAP, LANE_IDS, laneWaypoints, segmentAABBHit } from '@mech-arena-fight/shared';
 import type {
+  AABB,
   Balance,
   BotDifficulty,
   PlayerIndex,
@@ -45,6 +46,66 @@ interface Pt {
   z: number;
 }
 const d2 = (a: Pt, b: Pt): number => (a.x - b.x) ** 2 + (a.z - b.z) ** 2;
+
+// --- Navigation ------------------------------------------------------------
+// The bot's mech spawns in a walled compound with only a narrow diagonal gate,
+// so it cannot just beeline toward a far goal — it would grind into a base wall.
+// The map ships lane waypoints (own gate → edge → enemy core) that the robots
+// already follow; the mech reuses them with a simple line-of-sight shortcut:
+// drive straight to the goal when nothing blocks, otherwise aim at the lane
+// waypoint that is both reachable and closest to the goal ("string pulling").
+
+/** A bit less than the mech radius (1.1) so a mech resting on a wall still reads
+ * as "outside" the padded box, while paths keep clear of corners. */
+const PATH_PAD = 0.8;
+
+function padded(w: AABB): AABB {
+  return { minX: w.minX - PATH_PAD, minZ: w.minZ - PATH_PAD, maxX: w.maxX + PATH_PAD, maxZ: w.maxZ + PATH_PAD };
+}
+
+/** True if a straight drive from a→b would clip any collision wall. */
+function pathBlocked(a: Pt, b: Pt): boolean {
+  for (const w of GAME_MAP.walls) {
+    const box = padded(w);
+    // If we already overlap this wall (jammed), ignore it — driving on can only
+    // help us escape, and it must not veto every candidate point.
+    if (a.x >= box.minX && a.x <= box.maxX && a.z >= box.minZ && a.z <= box.maxZ) continue;
+    if (segmentAABBHit(a, b, box) !== null) return true;
+  }
+  return false;
+}
+
+/** Immediate steering point toward `goal`, routed around walls via lane waypoints. */
+function navTo(mech: Pt, goal: Pt, me: PlayerIndex): Pt {
+  if (!pathBlocked(mech, goal)) return goal;
+  // Reachable lane waypoint that gets us closest to the goal.
+  let best: Pt | null = null;
+  let bestScore = Infinity;
+  for (const lane of LANE_IDS) {
+    for (const wp of laneWaypoints(me, lane)) {
+      if (pathBlocked(mech, wp)) continue;
+      const score = d2(wp, goal);
+      if (score < bestScore) {
+        bestScore = score;
+        best = { x: wp.x, z: wp.z };
+      }
+    }
+  }
+  if (best) return best;
+  // Nothing in sight (wedged): head for the nearest waypoint to get back on a lane.
+  let near: Pt = goal;
+  let nearD = Infinity;
+  for (const lane of LANE_IDS) {
+    for (const wp of laneWaypoints(me, lane)) {
+      const dd = d2(wp, mech);
+      if (dd < nearD) {
+        nearD = dd;
+        near = { x: wp.x, z: wp.z };
+      }
+    }
+  }
+  return near;
+}
 
 const idleInput = (): PlayerInput => ({ mx: 0, mz: 0, aimX: 0, aimZ: 0, fire: false, alt: false, mode: 'walker' });
 
@@ -100,8 +161,10 @@ export function chooseInput(snap: Snapshot, me: PlayerIndex, _balance: Balance, 
     goal = turretGoal(snap, me, mech, tuning) ?? (target ?? { x: enemyCore.x, z: enemyCore.z });
   }
 
-  let mx = goal.x - mech.x;
-  let mz = goal.z - mech.z;
+  // Route the straight-line goal around walls (out of our base, along a lane).
+  const steer = navTo(mech, goal, me);
+  let mx = steer.x - mech.x;
+  let mz = steer.z - mech.z;
   const gd = Math.hypot(mx, mz);
   if (gd > ARRIVE_DIST) {
     mx /= gd;

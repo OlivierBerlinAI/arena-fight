@@ -44,4 +44,23 @@ describe('bot ai', () => {
     const input = chooseInput(sim.snapshot(), 1, sim.balance, BOT_TUNING.normal);
     expect(Math.hypot(input.mx, input.mz)).toBeGreaterThan(0.5); // moving somewhere
   });
+
+  it('navigates its mech out of the walled base instead of into a wall', () => {
+    const sim = new GameSimulation({ seed: 5, balance: TEST_BALANCE });
+    for (let i = 0; i < sim.balance.mech.spawnProtectionTicks + 1; i++) sim.tick();
+    // Player 0 idles in its base; only the bot (player 1) drives.
+    const start = { ...sim.state.mechs[1].pos };
+    let escaped = false;
+    for (let i = 0; i < 1500 && !escaped; i++) {
+      const input = chooseInput(sim.snapshot(), 1, sim.balance, BOT_TUNING.hard);
+      sim.tick([null, input]);
+      const p = sim.state.mechs[1].pos;
+      // Out through the inner gate and clear of the base zone (x,z ∈ [32,60]).
+      escaped = p.x < 30 && p.z < 30;
+    }
+    const end = sim.state.mechs[1].pos;
+    expect(escaped).toBe(true);
+    // And it actually travelled (didn't just jitter against the wall).
+    expect(Math.hypot(end.x - start.x, end.z - start.z)).toBeGreaterThan(20);
+  });
 });
