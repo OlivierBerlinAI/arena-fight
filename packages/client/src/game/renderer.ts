@@ -307,9 +307,11 @@ export class GameRenderer {
       const dim = 0.35 + 0.65 * hpFrac;
       view.baseMat.color.setHex(0x39455c).multiplyScalar(dim);
 
-      // HP bar above the turret (hidden while destroyed).
-      view.hpBar.group.visible = t.alive;
-      if (t.alive) view.hpBar.set(hpFrac);
+      // HP bar above the turret — only while it's owned and alive (neutral
+      // turrets show none).
+      const showHp = t.alive && t.owner !== -1;
+      view.hpBar.group.visible = showHp;
+      if (showHp) view.hpBar.set(hpFrac);
 
       // capture progress arc
       const p = t.capProgress;
