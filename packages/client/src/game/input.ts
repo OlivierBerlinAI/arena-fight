@@ -46,7 +46,7 @@ const TRANSFORM_CODE = 'KeyF';
  */
 const TURN = {
   walker: { accel: 42, friction: 14, max: 1.76 }, // 20% lower top turn rate than before (2.2)
-  hover: { accel: 14, friction: 2.6, max: 3.2 },
+  hover: { accel: 14, friction: 2.6, max: 1.6 }, // 50% lower top turn rate than before (3.2)
 } as const;
 
 /** reverse is a little slower than forward */
