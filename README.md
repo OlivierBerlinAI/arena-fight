@@ -34,14 +34,18 @@ remembered and defaults to **touch** on phones/tablets and **keyboard** on
 desktop. A **CONTROLS** button (top-right) opens an overlay with the matching
 list at any time (and lets you switch schemes live).
 
-### Keyboard (desktop) — the mouse is not used during a match
+### Keyboard (desktop) — movement and aiming are keyboard-only
+
+The mouse never aims or moves the camera, but firing can use the mouse buttons
+too (left = primary, right = rockets), so a cheap 2-key-rollover keyboard can
+still drive, turn and fire at once.
 
 | Control | Action |
 | --- | --- |
 | `W` / `S` | Drive forward / reverse along the facing direction |
 | `A` / `D` | Turn left / right — the chase camera always looks where the mech faces |
-| `M` | Primary fire — **Gatling** as a walker, **Laser** while hovering. Both share the **heat meter**; overheating locks it for 2 s |
-| `N` | **Rockets** — splash damage, 3-rocket magazine, then a reload (**walker only** — disabled in hover) |
+| `M` / left-click | Primary fire — **Gatling** as a walker, **Laser** while hovering. Both share the **heat meter**; overheating locks it for 2 s |
+| `N` / right-click | **Rockets** — splash damage, 3-rocket magazine, then a reload (**walker only** — disabled in hover) |
 | `F` | Transform **Walker ⇄ Hover**. Hover glides faster with low drag, but trades rockets for the laser |
 | `1` / `2` | Build **Hovertank** (50¢, 5 s) / **Dreadnought** (200¢, 15 s) |
 | ♪ button | Mute / unmute sound (HUD top bar) |

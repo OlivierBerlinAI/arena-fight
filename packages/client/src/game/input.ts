@@ -2,13 +2,17 @@
  * Player controls. Two interchangeable schemes feed one shared input model:
  *
  *   keyboard (desktop, default):
- *     W / S  drive forward / reverse along the facing direction
- *     A / D  rotate the mech left / right (this also turns the chase camera)
- *     M      primary fire (gatling as a walker, laser while hovering)
- *     N      secondary fire (rockets — walker only)
- *     F      transform walker ⇄ hover
- *     1 / 2  build hovertank / dreadnought
- *     F3     debug overlay
+ *     W / S         drive forward / reverse along the facing direction
+ *     A / D         rotate the mech left / right (this also turns the chase camera)
+ *     M / left mb   primary fire (gatling as a walker, laser while hovering)
+ *     N / right mb  secondary fire (rockets — walker only)
+ *     F             transform walker ⇄ hover
+ *     1 / 2         build hovertank / dreadnought
+ *     F3            debug overlay
+ *
+ *   Firing also accepts the mouse buttons (left = primary, right = secondary) so
+ *   a cheap 2-key-rollover keyboard can still drive+turn+fire at once. The mouse
+ *   never aims or moves the camera — aiming stays keyboard/facing-only.
  *
  *   touch (phone/tablet): an on-screen joystick + buttons (see ./touch.ts).
  *     The joystick's vector maps to the SAME throttle/turn axes the keys drive.
@@ -63,6 +67,9 @@ export interface InputCallbacks {
 export class InputManager {
   private readonly keys = new Set<string>();
   private mode: MechMode = 'walker';
+  /** left/right mouse buttons held — extra fire inputs alongside M/N */
+  private mouseFire = false;
+  private mouseAlt = false;
   private sendTimer: number | null = null;
   private playing = false;
   /** on-screen controls — created only while the touch scheme is active */
@@ -93,15 +100,35 @@ export class InputManager {
   };
   private readonly onBlur = (): void => {
     this.keys.clear();
+    this.mouseFire = false;
+    this.mouseAlt = false;
+  };
+  // Mouse buttons are an extra FIRE input only — they never aim or move the
+  // camera. Listening on the canvas (not window) means clicks on HUD buttons
+  // don't fire; mouseup/contextmenu on window catch release/menu anywhere.
+  private readonly onMouseDown = (e: MouseEvent): void => {
+    if (e.button === 0) this.mouseFire = true;
+    else if (e.button === 2) this.mouseAlt = true;
+  };
+  private readonly onMouseUp = (e: MouseEvent): void => {
+    if (e.button === 0) this.mouseFire = false;
+    else if (e.button === 2) this.mouseAlt = false;
+  };
+  private readonly onContextMenu = (e: Event): void => {
+    e.preventDefault(); // right-click fires rockets instead of opening the menu
   };
 
   constructor(
+    private readonly canvas: HTMLCanvasElement,
     private readonly cb: InputCallbacks,
     scheme: ControlScheme
   ) {
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.onBlur);
+    canvas.addEventListener('mousedown', this.onMouseDown);
+    window.addEventListener('mouseup', this.onMouseUp);
+    canvas.addEventListener('contextmenu', this.onContextMenu);
     this.setScheme(scheme);
 
     this.sendTimer = window.setInterval(() => {
@@ -196,8 +223,8 @@ export class InputManager {
       mz,
       aimX: aim.x,
       aimZ: aim.z,
-      fire: this.keys.has('KeyM') || (this.touch?.firePressed ?? false),
-      alt: this.keys.has('KeyN') || (this.touch?.altPressed ?? false),
+      fire: this.keys.has('KeyM') || this.mouseFire || (this.touch?.firePressed ?? false),
+      alt: this.keys.has('KeyN') || this.mouseAlt || (this.touch?.altPressed ?? false),
       mode: this.mode,
     };
   }
@@ -207,6 +234,9 @@ export class InputManager {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
+    this.canvas.removeEventListener('mousedown', this.onMouseDown);
+    window.removeEventListener('mouseup', this.onMouseUp);
+    this.canvas.removeEventListener('contextmenu', this.onContextMenu);
     this.touch?.dispose();
     this.touch = null;
   }

@@ -83,6 +83,7 @@ export class MatchController {
     };
     this.hud = new Hud(this.balance, cfg.playerIndex, cfg.tickRate, sendBuild);
     this.input = new InputManager(
+      this.renderer.canvas,
       {
         onBuild: sendBuild,
         onToggleDebug: () => this.debug.toggle(),

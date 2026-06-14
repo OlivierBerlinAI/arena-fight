@@ -66,18 +66,51 @@ test.describe('keyboard controls', () => {
     const moved = await ownMech(pageA);
     expect(dist(moved, start)).toBeGreaterThan(3);
 
+    // Helper: wait until this player has a live projectile (optionally of a kind).
+    const waitOwnProjectile = (kind?: string): Promise<unknown> =>
+      pageA.waitForFunction(
+        (k) => {
+          const g = (window as unknown as { __game?: GameHook }).__game;
+          return (
+            !!g &&
+            g.entities.some(
+              (e) => e.kind === 'projectile' && e.owner === g.playerIndex && (!k || e.type === k)
+            )
+          );
+        },
+        kind,
+        { timeout: 5000, polling: 50 }
+      );
+    const waitNoOwnProjectile = (): Promise<unknown> =>
+      pageA.waitForFunction(
+        () => {
+          const g = (window as unknown as { __game?: GameHook }).__game;
+          return !!g && !g.entities.some((e) => e.kind === 'projectile' && e.owner === g.playerIndex);
+        },
+        undefined,
+        { timeout: 5000, polling: 50 }
+      );
+
     // M fires the primary — a projectile owned by this player appears (facing
     // the open centre after moving, so bolts clear the base walls).
     await pageA.keyboard.down('m');
-    await pageA.waitForFunction(
-      () => {
-        const g = (window as unknown as { __game?: GameHook }).__game;
-        return !!g && g.entities.some((e) => e.kind === 'projectile' && e.owner === g.playerIndex);
-      },
-      undefined,
-      { timeout: 5000, polling: 50 }
-    );
+    await waitOwnProjectile();
     await pageA.keyboard.up('m');
+    await waitNoOwnProjectile(); // let the gatling tracers expire to isolate the next check
+
+    // Left mouse button is an additional primary-fire input (for 2-key-rollover
+    // keyboards). Click on the canvas (not a HUD button) and a bolt appears.
+    const canvas = pageA.locator('#canvas-root canvas');
+    const box = (await canvas.boundingBox())!;
+    await pageA.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await pageA.mouse.down(); // left button
+    await waitOwnProjectile();
+    await pageA.mouse.up();
+
+    // Right mouse button fires rockets (walker only).
+    await pageA.mouse.down({ button: 'right' });
+    await waitOwnProjectile('rocket');
+    await pageA.mouse.up({ button: 'right' });
 
     // A turns the mech (walker) — yaw changes by a clear margin.
     const beforeWalkerTurn = await ownMech(pageA);
