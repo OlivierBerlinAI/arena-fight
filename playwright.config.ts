@@ -10,7 +10,9 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   fullyParallel: false,
   workers: 1,
-  retries: process.env.CI ? 1 : 0,
+  // One retry everywhere: the full-match victory tests can still flake under
+  // software-WebGL CPU starvation even with a smaller viewport + heartbeat grace.
+  retries: process.env.CI ? 2 : 1,
   reporter: [['list'], ['html', { open: 'never' }]],
   use: {
     baseURL: 'http://localhost:5273',

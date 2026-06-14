@@ -44,9 +44,11 @@ export interface TwoPlayers {
 /**
  * Two WebGL scenes render through SwiftShader on the CPU in this environment;
  * a small viewport keeps both pages responsive (rendering cost scales with
- * pixel count and an overloaded main thread starves polling and the HUD).
+ * pixel count and an overloaded main thread starves polling and the HUD — the
+ * full-match victory tests flake when the busy client can't keep up). 640×400
+ * is ~36% fewer pixels than 800×500.
  */
-const VIEWPORT = { width: 800, height: 500 };
+const VIEWPORT = { width: 640, height: 400 };
 
 /**
  * Open two independent browser contexts on the client. With `test: true`
