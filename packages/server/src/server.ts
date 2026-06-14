@@ -18,6 +18,8 @@ import type { BalancePresetName } from '@mech-arena-fight/shared';
 
 /** Default simulation tick rate (Hz) when TICK_RATE / opts.tickRate are unset. */
 const DEFAULT_TICK_RATE = 100;
+/** Consecutive missed heartbeat pongs (30 s apart) before a socket is terminated. */
+const HEARTBEAT_MISS_LIMIT = 3;
 import { attachConnection } from './connection';
 import { LobbyManager } from './lobby';
 import { createLogger, logLevelFromEnv } from './logger';
@@ -124,10 +126,10 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Runnin
       ws.close(1013, 'server at capacity');
       return;
     }
-    const live = ws as WebSocket & { isAlive: boolean };
-    live.isAlive = true;
+    const live = ws as WebSocket & { missedPongs: number };
+    live.missedPongs = 0;
     ws.on('pong', () => {
-      live.isAlive = true;
+      live.missedPongs = 0;
     });
     attachConnection(lobby, ws);
   });
@@ -135,22 +137,21 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Runnin
   // Heartbeat: terminate sockets that stop answering pings, so dead/half-open
   // connections don't pile up on an internet-facing server.
   //
-  // FOLLOW-UP (vigilant-lovelace tick-rate/prediction work): a single missed
-  // pong terminates immediately. A client that briefly saturates — e.g. the
-  // busy player at the 100 Hz default on a weak device — can be dropped
-  // mid-match even though it's still alive (observed in e2e under software
-  // WebGL; see playwright.config.ts, which pins e2e to 30 Hz to dodge it).
-  // Consider requiring 2+ consecutive missed pongs before terminate and/or a
-  // client-side reconnect path, so a transient stall doesn't end the match.
+  // Grace: terminate only after several CONSECUTIVE missed pongs, not the first.
+  // A client that briefly saturates (e.g. a busy player rendering through
+  // software WebGL) can stall for a heartbeat window without being dead — a
+  // single missed pong used to drop it mid-match. A pong resets the counter, so
+  // a responsive client never trips it; an actually-dead one is gone within
+  // HEARTBEAT_MISS_LIMIT intervals (~90 s here).
   const heartbeat = setInterval(() => {
     for (const ws of wss.clients) {
-      const live = ws as WebSocket & { isAlive?: boolean };
-      if (live.isAlive === false) {
+      if (ws.readyState !== WebSocket.OPEN) continue;
+      const live = ws as WebSocket & { missedPongs?: number };
+      live.missedPongs = (live.missedPongs ?? 0) + 1;
+      if (live.missedPongs >= HEARTBEAT_MISS_LIMIT) {
         ws.terminate();
         continue;
       }
-      if (ws.readyState !== WebSocket.OPEN) continue;
-      live.isAlive = false;
       ws.ping();
     }
   }, 30_000);
