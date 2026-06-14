@@ -744,7 +744,8 @@ kbd {
 }
 .scheme-prompt .scheme-options {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 10px;
   width: 100%;
 }
 .scheme-prompt .seg {
