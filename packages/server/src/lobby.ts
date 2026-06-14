@@ -5,9 +5,16 @@
  * whenever rooms change.
  */
 import { randomBytes } from 'node:crypto';
+import { Worker } from 'node:worker_threads';
 import type { WebSocket } from 'ws';
 import { PROTOCOL_VERSION } from '@mech-arena-fight/shared';
-import type { BalancePresetName, ClientMessage, RoomSummary, ServerErrorCode } from '@mech-arena-fight/shared';
+import type {
+  BalancePresetName,
+  BotDifficulty,
+  ClientMessage,
+  RoomSummary,
+  ServerErrorCode,
+} from '@mech-arena-fight/shared';
 import { send } from './connection';
 import type { ClientConn } from './connection';
 import type { Logger } from './logger';
@@ -34,6 +41,10 @@ export class LobbyManager {
   private readonly countdownSecondMs: number;
   private readonly forcedPreset: BalancePresetName | undefined;
   private readonly allowTuning: boolean;
+  /** ws:// the bot workers dial back into; set once the server is listening. */
+  private botConnectUrl: string | null = null;
+  /** live bot worker threads, keyed by their room id, so we can stop them. */
+  private readonly botWorkers = new Map<string, Worker>();
   private readonly clients = new Map<string, ClientConn>();
   private readonly rooms = new Map<string, Room>();
 
@@ -109,6 +120,38 @@ export class LobbyManager {
           host: client.name,
         });
         room.addClient(client);
+        return;
+      }
+      case 'playVsBot': {
+        if (client.roomId !== null) {
+          return this.sendError(client, 'alreadyInRoom', 'leave your current room first');
+        }
+        if (this.botConnectUrl === null) {
+          return this.sendError(client, 'internal', 'AI opponent unavailable');
+        }
+        const preset = this.forcedPreset ?? 'default';
+        const room = new Room({
+          id: this.newRoomId(),
+          name: `${client.name ?? 'someone'} vs AI`,
+          preset,
+          tickRate: this.tickRate,
+          tickMs: this.tickMs,
+          countdownSecondMs: this.countdownSecondMs,
+          logger: this.logger,
+          onRoomsChanged: () => this.broadcastLobby(),
+          onEmpty: (r) => this.removeRoom(r),
+        });
+        this.rooms.set(room.id, room);
+        room.addClient(client);
+        room.setReady(client, true); // human is auto-readied; the bot readies on join
+        const name = `AI (${msg.difficulty})`;
+        const worker = new Worker(new URL('./bot/worker.ts', import.meta.url), {
+          workerData: { url: this.botConnectUrl, roomId: room.id, name, difficulty: msg.difficulty },
+        });
+        worker.on('error', (e) => this.logger.error('bot worker error', { error: e.message }));
+        worker.on('exit', () => this.botWorkers.delete(room.id));
+        this.botWorkers.set(room.id, worker);
+        this.logger.info('vs-AI match created', { roomId: room.id, difficulty: msg.difficulty });
         return;
       }
       case 'joinRoom': {
@@ -204,8 +247,14 @@ export class LobbyManager {
     return client.roomId !== null ? this.rooms.get(client.roomId) : undefined;
   }
 
+  /** Tell the lobby where bot workers should dial in (called once listening). */
+  setBotConnectUrl(url: string): void {
+    this.botConnectUrl = url;
+  }
+
   private removeRoom(room: Room): void {
     this.rooms.delete(room.id);
+    this.botWorkers.get(room.id)?.postMessage('stop'); // stop its AI worker, if any
     room.dispose();
     this.logger.info('room removed', { roomId: room.id, name: room.name });
     this.broadcastLobby();
@@ -243,6 +292,8 @@ export class LobbyManager {
 
   /** Tear everything down: all room timers cleared, all sockets terminated. */
   closeAll(): void {
+    for (const w of this.botWorkers.values()) void w.terminate();
+    this.botWorkers.clear();
     for (const room of this.rooms.values()) room.dispose();
     this.rooms.clear();
     for (const client of this.clients.values()) client.ws.terminate();

@@ -59,6 +59,12 @@
             />
             <button id="create-room-btn" data-testid="create-room-btn" class="btn primary">CREATE ROOM</button>
           </div>
+          <div class="form-row" id="vs-ai-row">
+            <span class="vs-ai-label">PLAY VS AI</span>
+            <button type="button" class="btn" data-difficulty="easy" data-testid="vs-ai-easy">EASY</button>
+            <button type="button" class="btn" data-difficulty="normal" data-testid="vs-ai-normal">NORMAL</button>
+            <button type="button" class="btn primary" data-difficulty="hard" data-testid="vs-ai-hard">HARD</button>
+          </div>
           <div id="room-list" data-testid="room-list" class="room-list"></div>
           <p id="lobby-empty" class="dim center">No open rooms &mdash; create one.</p>
         </div>

@@ -59,6 +59,10 @@ class App {
     (roomId) => {
       this.sound.uiClick();
       this.net.send({ type: 'joinRoom', roomId });
+    },
+    (difficulty) => {
+      this.sound.uiClick();
+      this.net.send({ type: 'playVsBot', difficulty });
     }
   );
   private readonly roomScreen = new RoomScreen(

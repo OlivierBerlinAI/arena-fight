@@ -166,6 +166,8 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Runnin
     });
   });
   const port = (httpServer.address() as AddressInfo).port;
+  // Bot workers dial back into the server over the loopback WS like any client.
+  lobby.setBotConnectUrl(`ws://127.0.0.1:${port}`);
   logger.info('server listening', {
     port,
     tickRate,

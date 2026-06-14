@@ -1,4 +1,4 @@
-import type { RoomSummary } from '@mech-arena-fight/shared';
+import type { BotDifficulty, RoomSummary } from '@mech-arena-fight/shared';
 import { byId, el } from '../dom';
 
 export class LobbyScreen {
@@ -10,12 +10,16 @@ export class LobbyScreen {
 
   constructor(
     onCreate: (roomName: string | undefined) => void,
-    private readonly onJoin: (roomId: string) => void
+    private readonly onJoin: (roomId: string) => void,
+    onPlayVsBot: (difficulty: BotDifficulty) => void
   ) {
     this.createBtn.addEventListener('click', () => {
       const raw = this.roomNameInput.value.trim().slice(0, 32);
       onCreate(raw.length > 0 ? raw : undefined);
     });
+    for (const btn of byId('vs-ai-row').querySelectorAll<HTMLButtonElement>('[data-difficulty]')) {
+      btn.addEventListener('click', () => onPlayVsBot(btn.dataset.difficulty as BotDifficulty));
+    }
   }
 
   setSelfName(name: string): void {

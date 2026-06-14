@@ -139,12 +139,18 @@ export const MECH_TUNE_KEYS = [
 export type MechTuneKey = (typeof MECH_TUNE_KEYS)[number];
 export type MechTune = Record<MechTuneKey, number>;
 
+/** Opponent-AI difficulty levels (lobby "Play vs AI"). */
+export const BOT_DIFFICULTIES = ['easy', 'normal', 'hard'] as const;
+export type BotDifficulty = (typeof BOT_DIFFICULTIES)[number];
+
 export type ClientMessage =
   | { type: 'hello'; name: string }
   | { type: 'createRoom'; roomName?: string; preset?: BalancePresetName }
   | { type: 'joinRoom'; roomId: string }
   | { type: 'leaveRoom' }
   | { type: 'ready'; ready: boolean }
+  /** Start a private match against a server-side AI of the given difficulty. */
+  | { type: 'playVsBot'; difficulty: BotDifficulty }
   | { type: 'input'; mx: number; mz: number; aimX: number; aimZ: number; fire: boolean; alt: boolean; mode: MechMode }
   | { type: 'build'; unit: UnitType }
   /** Debug tuning overlay: live-adjust one mech movement field on the room. */
@@ -290,6 +296,12 @@ export function validateClientMessage(data: unknown): ValidationResult {
     case 'build': {
       if (!isUnitType(data.unit)) return { ok: false, error: 'build: invalid unit' };
       return { ok: true, msg: { type, unit: data.unit } };
+    }
+    case 'playVsBot': {
+      if (!(BOT_DIFFICULTIES as readonly string[]).includes(data.difficulty as string)) {
+        return { ok: false, error: 'playVsBot: invalid difficulty' };
+      }
+      return { ok: true, msg: { type, difficulty: data.difficulty as BotDifficulty } };
     }
     case 'tuneMech': {
       if (typeof data.key !== 'string' || !(MECH_TUNE_KEYS as readonly string[]).includes(data.key)) {
