@@ -3,8 +3,10 @@
  * (see ./runner) and exits the thread when it finishes or the parent says stop.
  *
  * tsx transpiles this entry file but does not register its loader for the
- * worker's own imports, so we pull the runner in through tsx's programmatic
- * `tsImport` API, which transpiles it (and its TypeScript imports) on the fly.
+ * worker's own imports (worker threads don't inherit it), so we pull the runner
+ * in through tsx's programmatic `tsImport` API, which transpiles it (and its
+ * TypeScript imports) on the fly. tsx must therefore be resolvable at runtime —
+ * it is a production dependency of this package, not just a dev tool.
  */
 import { parentPort, workerData } from 'node:worker_threads';
 import { tsImport } from 'tsx/esm/api';
