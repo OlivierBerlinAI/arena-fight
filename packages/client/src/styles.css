@@ -1083,3 +1083,35 @@ body.touch-active .mode-hint {
   border-color: var(--cyan);
   color: var(--cyan);
 }
+
+/* ---------- respawn countdown (center, while dead) ---------- */
+#respawn-overlay {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  display: none;
+  pointer-events: none;
+}
+#respawn-overlay.active {
+  display: block;
+}
+.respawn-label {
+  color: var(--red);
+  letter-spacing: 6px;
+  font-size: 20px;
+  text-shadow: 0 0 16px rgba(239, 68, 68, 0.6);
+}
+.respawn-count {
+  font-size: 88px;
+  line-height: 1.1;
+  color: var(--cyan);
+  text-shadow: 0 0 30px rgba(34, 211, 238, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+.respawn-sub {
+  color: var(--dim);
+  letter-spacing: 3px;
+  font-size: 12px;
+}

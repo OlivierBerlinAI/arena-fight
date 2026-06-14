@@ -83,6 +83,13 @@
         <div id="canvas-root"></div>
 
         <div id="hud">
+          <!-- center: respawn countdown while dead -->
+          <div id="respawn-overlay" data-testid="respawn-overlay">
+            <div class="respawn-label">DESTROYED</div>
+            <div class="respawn-count"><span id="respawn-seconds" data-testid="respawn-seconds">0</span></div>
+            <div class="respawn-sub">redeploying&hellip;</div>
+          </div>
+
           <!-- top bar -->
           <div id="hud-top">
             <div class="hud-box" id="hud-timer-box">

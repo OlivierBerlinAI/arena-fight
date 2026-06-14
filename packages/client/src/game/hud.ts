@@ -29,6 +29,8 @@ export class Hud {
   private readonly btnDread = byId<HTMLButtonElement>('build-dreadnought');
   private readonly queueRoot = byId('build-queue');
   private readonly feed = byId('event-feed');
+  private readonly respawnOverlay = byId('respawn-overlay');
+  private readonly respawnSeconds = byId('respawn-seconds');
 
   private readonly clickHover = (): void => this.onBuild('hovertank');
   private readonly clickDread = (): void => this.onBuild('dreadnought');
@@ -67,10 +69,13 @@ export class Hud {
     // health
     const hpFrac = Math.max(0, mech.hp) / this.balance.mech.maxHp;
     this.healthFill.style.width = `${hpFrac * 100}%`;
-    this.healthText.textContent = mech.alive
-      ? `${Math.max(0, mech.hp)}`
-      : `RESPAWN ${Math.ceil(mech.respawnInTicks / this.tickRate)}s`;
+    const respawnSecs = Math.ceil(mech.respawnInTicks / this.tickRate);
+    this.healthText.textContent = mech.alive ? `${Math.max(0, mech.hp)}` : `RESPAWN ${respawnSecs}s`;
     this.healthRoot.classList.toggle('dead', !mech.alive);
+
+    // center respawn countdown while dead
+    this.respawnOverlay.classList.toggle('active', !mech.alive);
+    if (!mech.alive) this.respawnSeconds.textContent = String(respawnSecs);
 
     // heat
     const heatFrac = Math.min(1, mech.heat / this.balance.gatling.overheatAt);
