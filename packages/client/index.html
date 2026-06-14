@@ -104,6 +104,7 @@
             <div class="hud-audio-group">
               <button id="hud-audio-music" data-testid="hud-audio-music" class="hud-audio" title="Music on">♪ MUSIC</button>
               <button id="hud-audio-sfx" data-testid="hud-audio-sfx" class="hud-audio" title="Effects on">♪ SFX</button>
+              <button id="menu-btn" data-testid="menu-btn" class="hud-audio" title="Menu">&#9776; MENU</button>
             </div>
           </div>
 
@@ -222,6 +223,27 @@
           </table>
           <p class="dim kb-only">Tip: the mouse buttons also fire &mdash; left-click for primary, right-click for rockets.</p>
           <button id="controls-close" data-testid="controls-close" class="btn primary">CLOSE</button>
+        </div>
+      </div>
+
+      <!-- ============ In-match menu (both schemes) ============ -->
+      <div id="game-menu" class="overlay" data-testid="game-menu">
+        <div class="panel center-panel menu-panel">
+          <h2>MENU</h2>
+          <div id="menu-scheme-toggle" class="control-toggle scheme-prompt">
+            <span class="control-toggle-label">CONTROL SCHEME</span>
+            <div class="scheme-options">
+              <button type="button" class="seg" data-scheme="keyboard" data-testid="menu-scheme-keyboard">
+                <span class="seg-title">&#9000; KEYBOARD</span>
+              </button>
+              <button type="button" class="seg" data-scheme="touch" data-testid="menu-scheme-touch">
+                <span class="seg-title">&#9995; TOUCH</span>
+              </button>
+            </div>
+          </div>
+          <button id="menu-fullscreen" data-testid="menu-fullscreen" class="btn menu-action">&#9974; ENTER FULLSCREEN</button>
+          <button id="menu-quit" data-testid="menu-quit" class="btn menu-action danger">&#9632; QUIT MATCH</button>
+          <button id="menu-resume" data-testid="menu-resume" class="btn primary menu-action">RESUME</button>
         </div>
       </div>
     </div>

@@ -18,6 +18,7 @@ import { MatchController } from './game/match';
 import { SoundEngine } from './game/audio';
 import { ControlSchemeToggle, getControlScheme, onControlSchemeChange } from './controls';
 import type { ControlScheme } from './controls';
+import { enterFullscreen, isFullscreen, onFullscreenChange, toggleFullscreen } from './fullscreen';
 
 installGameHook();
 
@@ -54,6 +55,9 @@ class App {
   private readonly roomScreen = new RoomScreen(
     (ready) => {
       this.sound.uiClick();
+      // Readying up is the user gesture that leads into the match — the only
+      // moment we can legally request fullscreen for a touch player.
+      if (ready && getControlScheme() === 'touch') enterFullscreen();
       this.net.send({ type: 'ready', ready });
     },
     () => {
@@ -70,6 +74,7 @@ class App {
     },
     () => {
       this.sound.uiClick();
+      if (getControlScheme() === 'touch') enterFullscreen();
       this.net.send({ type: 'ready', ready: true });
     }
   );
@@ -80,12 +85,17 @@ class App {
   private readonly errorBanner = byId('error-banner');
   private readonly controlsBtn = byId<HTMLButtonElement>('controls-btn');
   private readonly controlsOverlay = byId('controls-overlay');
+  private readonly menuBtn = byId<HTMLButtonElement>('menu-btn');
+  private readonly gameMenu = byId('game-menu');
+  private readonly menuFullscreenBtn = byId<HTMLButtonElement>('menu-fullscreen');
 
   private readonly controlsToggle = new ControlSchemeToggle(byId('controls-scheme-toggle'));
+  private readonly menuSchemeToggle = new ControlSchemeToggle(byId('menu-scheme-toggle'));
 
   constructor() {
     this.nameScreen.focus();
     this.wireControlsHelp();
+    this.wireGameMenu();
     this.wireControlScheme();
     // Begin the menu theme right away; it stays silent until the first gesture
     // unlocks the audio context, then fades in.
@@ -120,6 +130,47 @@ class App {
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Escape' && overlay.classList.contains('active')) setOpen(false);
     });
+  }
+
+  /**
+   * In-match menu (HUD button, both schemes): switch control scheme, toggle
+   * fullscreen (touch only), or quit the running match back to the lobby.
+   */
+  private wireGameMenu(): void {
+    const menu = this.gameMenu;
+    const setOpen = (open: boolean): void => {
+      this.sound.uiClick();
+      menu.classList.toggle('active', open);
+    };
+    this.menuBtn.addEventListener('click', () => setOpen(true));
+    byId('menu-resume').addEventListener('click', () => setOpen(false));
+    menu.addEventListener('click', (e) => {
+      if (e.target === menu) setOpen(false); // backdrop dismiss
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.code !== 'Escape') return;
+      // Esc closes the menu, or opens it as a pause menu while playing.
+      if (menu.classList.contains('active')) setOpen(false);
+      else if (this.phase === 'playing' && !this.controlsOverlay.classList.contains('active')) {
+        setOpen(true);
+      }
+    });
+
+    byId('menu-quit').addEventListener('click', () => {
+      setOpen(false);
+      this.net.send({ type: 'leaveRoom' });
+      this.toLobby();
+    });
+
+    this.menuFullscreenBtn.addEventListener('click', () => {
+      this.sound.uiClick();
+      toggleFullscreen();
+    });
+    const syncFullscreenLabel = (): void => {
+      this.menuFullscreenBtn.textContent = isFullscreen() ? '⛶ EXIT FULLSCREEN' : '⛶ ENTER FULLSCREEN';
+    };
+    syncFullscreenLabel();
+    onFullscreenChange(syncFullscreenLabel);
   }
 
   // ------------------------------------------------------------- phases

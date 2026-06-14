@@ -648,7 +648,10 @@ input[type='text']:focus {
 /* controls help: always-available top-right button + shortcuts overlay */
 .controls-btn {
   position: fixed;
-  top: 10px;
+  /* Sit below the top HUD bar: the bar flows from the left and, on narrow
+   * viewports, its MUSIC/SFX/MENU cluster reaches this corner — overlapping a
+   * top:10 button and swallowing clicks meant for MENU. */
+  top: 52px;
   right: 12px;
   z-index: 30;
   background: var(--panel);
@@ -777,6 +780,37 @@ kbd {
 body.touch-active .kb-only {
   display: none;
 }
+
+/* ---------- in-match menu ---------- */
+.menu-panel {
+  min-width: 260px;
+}
+.menu-panel .scheme-prompt {
+  margin: 8px 0 18px;
+}
+.menu-action {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+}
+.menu-action.danger {
+  border-color: #f0556b;
+  color: #ff8d9d;
+}
+.menu-action.danger:hover {
+  border-color: #ff8d9d;
+  background: rgba(240, 85, 107, 0.16);
+}
+#menu-resume {
+  margin-top: 18px;
+}
+/* Fullscreen toggle is a mobile concern — only meaningful with touch controls. */
+#menu-fullscreen {
+  display: none;
+}
+body.touch-active #menu-fullscreen {
+  display: block;
+}
 body.touch-active table.touch-only {
   display: table;
 }
@@ -898,7 +932,8 @@ body.touch-active table.touch-only {
 
 /* ---------- touch-mode HUD layout (rearranged for thumbs) ---------- */
 body.touch-active #minimap {
-  top: 12px;
+  /* Below the top HUD bar so it doesn't cover the MUSIC/SFX/MENU buttons. */
+  top: 52px;
   right: 12px;
   bottom: auto;
   width: 112px;
