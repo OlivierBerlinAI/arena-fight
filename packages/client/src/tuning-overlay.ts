@@ -22,7 +22,7 @@ export interface TuningOverlayDeps {
   getMechValue: (key: MechTuneKey) => number;
 }
 
-type TurnField = 'max' | 'accel' | 'friction';
+type TurnField = 'max' | 'accel' | 'friction' | 'brakeFactor';
 type Spec =
   | { group: 'WALKER' | 'HOVER'; label: string; kind: 'turn'; mode: 'walker' | 'hover'; field: TurnField; min: number; max: number; step: number }
   | { group: 'WALKER' | 'HOVER'; label: string; kind: 'mech'; key: MechTuneKey; min: number; max: number; step: number };
@@ -31,12 +31,14 @@ const SPECS: Spec[] = [
   { group: 'WALKER', label: 'Turn rate', kind: 'turn', mode: 'walker', field: 'max', min: 0.2, max: 5, step: 0.02 },
   { group: 'WALKER', label: 'Turn accel', kind: 'turn', mode: 'walker', field: 'accel', min: 4, max: 80, step: 1 },
   { group: 'WALKER', label: 'Turn drag', kind: 'turn', mode: 'walker', field: 'friction', min: 1, max: 30, step: 0.5 },
+  { group: 'WALKER', label: 'Turn brake×', kind: 'turn', mode: 'walker', field: 'brakeFactor', min: 1, max: 3, step: 0.1 },
   { group: 'WALKER', label: 'Max speed', kind: 'mech', key: 'maxSpeed', min: 1, max: 40, step: 0.5 },
   { group: 'WALKER', label: 'Accel', kind: 'mech', key: 'accel', min: 5, max: 200, step: 1 },
   { group: 'WALKER', label: 'Drag', kind: 'mech', key: 'friction', min: 0.5, max: 20, step: 0.5 },
   { group: 'HOVER', label: 'Turn rate', kind: 'turn', mode: 'hover', field: 'max', min: 0.2, max: 5, step: 0.02 },
   { group: 'HOVER', label: 'Turn accel', kind: 'turn', mode: 'hover', field: 'accel', min: 4, max: 80, step: 1 },
   { group: 'HOVER', label: 'Turn drag', kind: 'turn', mode: 'hover', field: 'friction', min: 0.5, max: 20, step: 0.25 },
+  { group: 'HOVER', label: 'Turn brake×', kind: 'turn', mode: 'hover', field: 'brakeFactor', min: 1, max: 3, step: 0.1 },
   { group: 'HOVER', label: 'Max speed', kind: 'mech', key: 'hoverMaxSpeed', min: 1, max: 40, step: 0.5 },
   { group: 'HOVER', label: 'Accel', kind: 'mech', key: 'hoverAccel', min: 5, max: 200, step: 1 },
   { group: 'HOVER', label: 'Drag', kind: 'mech', key: 'hoverFriction', min: 0.5, max: 20, step: 0.2 },
@@ -155,8 +157,8 @@ export class TuningOverlay {
   private updateReadout(): void {
     const m = (k: MechTuneKey): string => this.fmt(this.deps.getMechValue(k));
     this.readout.textContent =
-      `TURN.walker { accel: ${TURN.walker.accel}, friction: ${TURN.walker.friction}, max: ${TURN.walker.max} }\n` +
-      `TURN.hover  { accel: ${TURN.hover.accel}, friction: ${TURN.hover.friction}, max: ${TURN.hover.max} }\n` +
+      `TURN.walker { accel: ${TURN.walker.accel}, friction: ${TURN.walker.friction}, max: ${TURN.walker.max}, brakeFactor: ${TURN.walker.brakeFactor} }\n` +
+      `TURN.hover  { accel: ${TURN.hover.accel}, friction: ${TURN.hover.friction}, max: ${TURN.hover.max}, brakeFactor: ${TURN.hover.brakeFactor} }\n` +
       `walker: maxSpeed ${m('maxSpeed')}, accel ${m('accel')}, friction ${m('friction')}\n` +
       `hover:  maxSpeed ${m('hoverMaxSpeed')}, accel ${m('hoverAccel')}, friction ${m('hoverFriction')}`;
   }

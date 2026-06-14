@@ -27,7 +27,7 @@ import type { MechMode, PlayerInput, UnitType, Vec2 } from '@mech-arena-fight/sh
 import type { ControlScheme } from '../controls';
 import { byId } from '../dom';
 import { TouchControls } from './touch';
-import { TURN } from './tuning';
+import { TURN, stepTurn } from './tuning';
 
 const SEND_INTERVAL_MS = 1000 / 60;
 /** key that toggles walker ⇄ hover */
@@ -166,13 +166,8 @@ export class InputManager {
       this.angularVel = 0;
       this.facingInit = true;
     } else {
-      const turn = this.turnAxis();
-      const t = TURN[this.mode];
-      // Analytic (frame-rate-independent) approach to the steady-state rate:
-      //   dω/dt = turn·accel − friction·ω  ⇒  ω(t+dt) = ω∞ + (ω − ω∞)·e^(−friction·dt)
-      const target = (turn * t.accel) / t.friction;
-      this.angularVel = target + (this.angularVel - target) * Math.exp(-t.friction * dt);
-      this.angularVel = Math.max(-t.max, Math.min(t.max, this.angularVel));
+      // Integrate the turn rate (brakes harder than it accelerates — see stepTurn).
+      this.angularVel = stepTurn(this.angularVel, this.turnAxis(), TURN[this.mode], dt);
       this.facingYaw += this.angularVel * dt;
     }
     const dx = Math.cos(this.facingYaw);
