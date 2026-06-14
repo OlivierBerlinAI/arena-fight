@@ -19,7 +19,8 @@ services:
       TICK_RATE: ${TICK_RATE:-100}    # simulation ticks per second (Hz)
       LOG_LEVEL: ${LOG_LEVEL:-info}
       MAX_CONNECTIONS: ${MAX_CONNECTIONS:-500}
-      DEBUG_STATE: "false"            # never expose the debug dump in production
+      DEBUG_STATE: ${DEBUG_STATE:-false}   # keep off in prod; flip to 1 for a dev build
+      ALLOW_TUNING: ${ALLOW_TUNING:-}      # set to 1 to accept the live tuning overlay (dev)
     ports:
       - "${SERVER_BIND:-127.0.0.1}:${SERVER_PORT:-8090}:8080"
     # --- hardening: contain the blast radius even if the app misbehaves ---
@@ -47,6 +48,8 @@ services:
     build:
       context: .
       dockerfile: packages/client/Dockerfile
+      args:
+        ENABLE_TUNING: ${ENABLE_TUNING:-}   # set to 1 to bake the tuning overlay into the build (dev)
     image: mech-arena-fight-client
     restart: unless-stopped
     init: true
