@@ -7,6 +7,7 @@ import { getBalance } from '@mech-arena-fight/shared';
 import type {
   Balance,
   BalancePresetName,
+  MechTune,
   PlayerIndex,
   SimEvent,
   Snapshot,
@@ -136,6 +137,14 @@ export class MatchController {
   /** Switch the live control scheme (keyboard ⇄ touch) mid-match. */
   setControlScheme(scheme: ControlScheme): void {
     this.input.setScheme(scheme);
+  }
+
+  /**
+   * Debug tuning overlay: fold live mech-movement values into the balance the
+   * client-side predictor reads, so prediction matches the server's tuned sim.
+   */
+  applyMechTune(mech: Partial<MechTune>): void {
+    Object.assign(this.balance.mech, mech);
   }
 
   // ----------------------------------------------------------- frame loop

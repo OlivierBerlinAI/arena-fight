@@ -10,6 +10,7 @@ import { GameSimulation, getBalance, SNAPSHOT_EVERY_TICKS } from '@mech-arena-fi
 import type {
   BalancePresetName,
   MatchEndReason,
+  MechTuneKey,
   PlayerIndex,
   PlayerInput,
   PlayerStats,
@@ -314,6 +315,29 @@ export class Room {
     const seat = this.matchSeat.get(client.id);
     if (seat === undefined) return;
     this.inputs[seat] = input;
+  }
+
+  /**
+   * Debug tuning overlay: live-adjust one mech movement field on this room's
+   * running simulation and echo the full set back so every client's prediction
+   * stays in sync. No-op outside a match.
+   */
+  tuneMech(key: MechTuneKey, value: number): void {
+    if (this.sim === null) return;
+    const mech = this.sim.balance.mech;
+    mech[key] = value;
+    this.broadcast({
+      type: 'mechTuned',
+      mech: {
+        maxSpeed: mech.maxSpeed,
+        accel: mech.accel,
+        friction: mech.friction,
+        hoverMaxSpeed: mech.hoverMaxSpeed,
+        hoverAccel: mech.hoverAccel,
+        hoverFriction: mech.hoverFriction,
+      },
+    });
+    this.logger.debug('mech tuned', { roomId: this.id, key, value });
   }
 
   /** Returns an error string when the build cannot even be queued. */

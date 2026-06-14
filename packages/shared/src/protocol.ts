@@ -125,6 +125,18 @@ export interface RoomInfo {
 // Messages
 // ---------------------------------------------------------------------------
 
+/** Mech movement fields tunable live via the debug tuning overlay. */
+export const MECH_TUNE_KEYS = [
+  'maxSpeed',
+  'accel',
+  'friction',
+  'hoverMaxSpeed',
+  'hoverAccel',
+  'hoverFriction',
+] as const;
+export type MechTuneKey = (typeof MECH_TUNE_KEYS)[number];
+export type MechTune = Record<MechTuneKey, number>;
+
 export type ClientMessage =
   | { type: 'hello'; name: string }
   | { type: 'createRoom'; roomName?: string; preset?: BalancePresetName }
@@ -133,6 +145,8 @@ export type ClientMessage =
   | { type: 'ready'; ready: boolean }
   | { type: 'input'; mx: number; mz: number; aimX: number; aimZ: number; fire: boolean; alt: boolean; mode: MechMode }
   | { type: 'build'; unit: UnitType }
+  /** Debug tuning overlay: live-adjust one mech movement field on the room. */
+  | { type: 'tuneMech'; key: MechTuneKey; value: number }
   | { type: 'ping'; t: number };
 
 export type MatchEndReason = 'core' | 'forfeit';
@@ -162,6 +176,8 @@ export type ServerMessage =
       tickMs: number;
     }
   | { type: 'snapshot'; snap: Snapshot; events: SimEvent[] }
+  /** Debug tuning overlay: the room's current mech movement values after a tune. */
+  | { type: 'mechTuned'; mech: MechTune }
   | {
       type: 'matchEnd';
       winner: PlayerIndex;
@@ -272,6 +288,15 @@ export function validateClientMessage(data: unknown): ValidationResult {
     case 'build': {
       if (!isUnitType(data.unit)) return { ok: false, error: 'build: invalid unit' };
       return { ok: true, msg: { type, unit: data.unit } };
+    }
+    case 'tuneMech': {
+      if (typeof data.key !== 'string' || !(MECH_TUNE_KEYS as readonly string[]).includes(data.key)) {
+        return { ok: false, error: 'tuneMech: invalid key' };
+      }
+      if (!isFiniteNumber(data.value) || data.value < 0 || data.value > 500) {
+        return { ok: false, error: 'tuneMech: invalid value' };
+      }
+      return { ok: true, msg: { type, key: data.key as MechTuneKey, value: data.value } };
     }
     case 'ping': {
       if (!isFiniteNumber(data.t)) return { ok: false, error: 'ping: invalid timestamp' };

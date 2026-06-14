@@ -4,8 +4,8 @@
  * Handles disconnects at every stage: error banner + back to the name screen.
  */
 import './styles.css';
-import { PROTOCOL_VERSION } from '@mech-arena-fight/shared';
-import type { PlayerIndex, RoomInfo, ServerMessage } from '@mech-arena-fight/shared';
+import { DEFAULT_BALANCE, PROTOCOL_VERSION } from '@mech-arena-fight/shared';
+import type { MechTune, MechTuneKey, PlayerIndex, RoomInfo, ServerMessage } from '@mech-arena-fight/shared';
 import { Net, isTestMode, serverUrl } from './net';
 import { byId } from './dom';
 import { gameHook, installGameHook, resetMatchHook } from './testhook';
@@ -19,6 +19,7 @@ import { SoundEngine } from './game/audio';
 import { ControlSchemeToggle, getControlScheme, onControlSchemeChange } from './controls';
 import type { ControlScheme } from './controls';
 import { enterFullscreen, isFullscreen, onFullscreenChange, toggleFullscreen } from './fullscreen';
+import { TuningOverlay } from './tuning-overlay';
 
 installGameHook();
 
@@ -92,11 +93,26 @@ class App {
   private readonly controlsToggle = new ControlSchemeToggle(byId('controls-scheme-toggle'));
   private readonly menuSchemeToggle = new ControlSchemeToggle(byId('menu-scheme-toggle'));
 
+  private readonly tuningOverlay = new TuningOverlay({
+    onMechChange: (key: MechTuneKey, value: number) => {
+      this.net.send({ type: 'tuneMech', key, value });
+      this.match?.applyMechTune({ [key]: value } as Partial<MechTune>); // optimistic; server echo confirms
+    },
+    getMechValue: (key: MechTuneKey) => this.match?.balance.mech[key] ?? DEFAULT_BALANCE.mech[key],
+  });
+
   constructor() {
     this.nameScreen.focus();
     this.wireControlsHelp();
     this.wireGameMenu();
     this.wireControlScheme();
+    // F2 toggles the movement tuning overlay (non-modal — driving still works).
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'F2') {
+        e.preventDefault();
+        this.tuningOverlay.toggle();
+      }
+    });
     // Begin the menu theme right away; it stays silent until the first gesture
     // unlocks the audio context, then fades in.
     this.updateMusic(this.phase);
@@ -339,6 +355,12 @@ class App {
 
       case 'snapshot':
         this.match?.onSnapshot(msg.snap, msg.events);
+        break;
+
+      case 'mechTuned':
+        // Debug tuning echo: keep prediction + the overlay in sync with the sim.
+        this.match?.applyMechTune(msg.mech);
+        this.tuningOverlay.syncMech();
         break;
 
       case 'matchEnd':

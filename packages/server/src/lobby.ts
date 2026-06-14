@@ -164,6 +164,10 @@ export class LobbyManager {
         if (error !== null) this.sendError(client, 'buildUnavailable', error);
         return;
       }
+      case 'tuneMech': {
+        this.roomOf(client)?.tuneMech(msg.key, msg.value);
+        return;
+      }
       default: {
         // Exhaustiveness guard — parseClientMessage cannot produce this.
         const never: never = msg;

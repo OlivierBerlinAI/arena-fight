@@ -27,27 +27,14 @@ import type { MechMode, PlayerInput, UnitType, Vec2 } from '@mech-arena-fight/sh
 import type { ControlScheme } from '../controls';
 import { byId } from '../dom';
 import { TouchControls } from './touch';
+import { TURN } from './tuning';
 
 const SEND_INTERVAL_MS = 1000 / 60;
 /** key that toggles walker ⇄ hover */
 const TRANSFORM_CODE = 'KeyF';
 
-/**
- * Turning uses an angular-velocity model so each mode has its own feel:
- *  - walker: high drag → snappy, direct steering, but a lower top turn rate
- *  - hover:  low drag + strong angular thrust → the turn accelerates in and
- *            glides out, mirroring the hover forward acceleration/coast
- *
- * `accel/friction` is the target (steady-state) turn rate it accelerates
- * toward; `friction` sets how fast it gets there and coasts back; `max` clamps
- * the rate. Both targets sit well above `max`, so the cap — not the integrator
- * step — bounds the rate, which keeps the feel identical at any frame rate
- * (the integrator below is the analytic, frame-rate-independent solution).
- */
-const TURN = {
-  walker: { accel: 42, friction: 14, max: 1.76 }, // 20% lower top turn rate than before (2.2)
-  hover: { accel: 14, friction: 2.6, max: 1.6 }, // 50% lower top turn rate than before (3.2)
-} as const;
+// Per-mode turn feel (live-tunable via the tuning overlay). The integrator
+// below is the analytic, frame-rate-independent solution; `max` caps the rate.
 
 /** reverse is a little slower than forward */
 const REVERSE_THROTTLE = 0.65;

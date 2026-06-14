@@ -998,3 +998,88 @@ body.touch-active .mode-hint {
     line-height: 1.6;
   }
 }
+
+/* ---------- tuning overlay (F2, dev tool) ---------- */
+#tune-overlay {
+  position: absolute;
+  top: 50%;
+  left: 12px;
+  transform: translateY(-50%);
+  width: 252px;
+  max-height: 94vh;
+  overflow-y: auto;
+  display: none;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  background: rgba(8, 12, 18, 0.93);
+  border: 1px solid var(--cyan);
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.2);
+  z-index: 35; /* above the HUD, below the modal overlays */
+  pointer-events: auto;
+  font-size: 11px;
+}
+#tune-overlay.open {
+  display: flex;
+}
+.tune-title {
+  color: var(--cyan);
+  letter-spacing: 2px;
+  font-size: 12px;
+}
+.tune-hint {
+  color: var(--dim);
+  font-size: 9px;
+  margin-bottom: 4px;
+}
+.tune-group {
+  color: var(--yellow);
+  letter-spacing: 2px;
+  font-size: 10px;
+  margin-top: 8px;
+  border-top: 1px solid var(--line);
+  padding-top: 4px;
+}
+.tune-row {
+  display: grid;
+  grid-template-columns: 62px 1fr 40px;
+  align-items: center;
+  gap: 6px;
+}
+.tune-label {
+  color: var(--dim);
+  font-size: 10px;
+}
+.tune-row input[type='range'] {
+  width: 100%;
+  accent-color: var(--cyan);
+}
+.tune-value {
+  color: var(--text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.tune-readout {
+  margin-top: 8px;
+  padding: 6px;
+  background: #060a10;
+  border: 1px solid var(--line);
+  color: var(--dim);
+  font-size: 9px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+.tune-copy {
+  margin-top: 6px;
+  background: #121a26;
+  border: 1px solid var(--line-bright);
+  color: var(--text);
+  font: inherit;
+  font-size: 10px;
+  padding: 5px;
+  cursor: pointer;
+}
+.tune-copy:hover {
+  border-color: var(--cyan);
+  color: var(--cyan);
+}
