@@ -1121,15 +1121,16 @@ body.touch-active .mode-hint {
 }
 
 /* ---------- lobby: play vs AI ---------- */
+.vs-ai-heading {
+  color: var(--cyan);
+  font-size: 14px;
+  letter-spacing: 2px;
+  margin: 18px 0 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+}
 #vs-ai-row {
   align-items: center;
-}
-.vs-ai-label {
-  color: var(--dim);
-  font-size: 11px;
-  letter-spacing: 2px;
-  margin-right: 6px;
-  white-space: nowrap;
 }
 #vs-ai-row .btn {
   padding: 8px 14px;
