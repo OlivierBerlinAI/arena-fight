@@ -45,7 +45,7 @@ const TRANSFORM_CODE = 'KeyF';
  * (the integrator below is the analytic, frame-rate-independent solution).
  */
 const TURN = {
-  walker: { accel: 42, friction: 14, max: 2.2 },
+  walker: { accel: 42, friction: 14, max: 1.76 }, // 20% lower top turn rate than before (2.2)
   hover: { accel: 14, friction: 2.6, max: 3.2 },
 } as const;
 
