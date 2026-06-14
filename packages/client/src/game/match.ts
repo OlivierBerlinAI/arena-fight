@@ -14,6 +14,7 @@ import type {
   UnitType,
 } from '@mech-arena-fight/shared';
 import type { Net } from '../net';
+import { isNoRender } from '../net';
 import { gameHook } from '../testhook';
 import type { GameEntityInfo } from '../testhook';
 import { getControlScheme } from '../controls';
@@ -49,6 +50,7 @@ export class MatchController {
   private readonly minimap: Minimap;
   private readonly debug = new DebugOverlay();
   private readonly predictor = new LocalMechPredictor();
+  private readonly noRender = isNoRender();
 
   private raf = 0;
   private lastFrame = performance.now();
@@ -222,7 +224,9 @@ export class MatchController {
       });
     }
 
-    this.renderer.render();
+    // ?norender (e2e): skip the WebGL draw — the loop above still updates the
+    // sim view, HUD and __game, which is all the tests assert.
+    if (!this.noRender) this.renderer.render();
   }
 
   private updateAudioButtons(): void {

@@ -23,6 +23,15 @@ export function isTestMode(): boolean {
   return new URLSearchParams(location.search).get('test') === '1';
 }
 
+/**
+ * `?norender=1`: run the match loop (sim/interpolation/prediction/HUD/__game)
+ * but skip the per-frame WebGL draw. Used by the e2e suite so its state-based
+ * assertions run without paying the software-WebGL rasterisation cost.
+ */
+export function isNoRender(): boolean {
+  return new URLSearchParams(location.search).get('norender') === '1';
+}
+
 export class Net {
   private socket: WebSocket | null = null;
   private pingTimer: number | null = null;

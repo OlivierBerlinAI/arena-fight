@@ -59,7 +59,9 @@ export async function createTwoPlayers(
   browser: Browser,
   opts: { test?: boolean } = {}
 ): Promise<TwoPlayers> {
-  const url = opts.test === false ? '/' : '/?test=1';
+  // norender: skip the per-frame WebGL draw — the suite asserts via __game/DOM,
+  // not pixels, so this cuts the dominant software-WebGL cost (and the flake).
+  const url = opts.test === false ? '/?norender=1' : '/?test=1&norender=1';
   const ctxA = await browser.newContext({ viewport: VIEWPORT });
   const ctxB = await browser.newContext({ viewport: VIEWPORT });
   const pageA = await ctxA.newPage();
