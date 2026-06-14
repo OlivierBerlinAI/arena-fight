@@ -1,4 +1,4 @@
-import type { MatchEndReason, PlayerIndex, PlayerStats } from '@precinct/shared';
+import type { MatchEndReason, PlayerIndex, PlayerStats } from '@mech-arena-fight/shared';
 import { byId, el, formatTime } from '../dom';
 
 export interface MatchResult {

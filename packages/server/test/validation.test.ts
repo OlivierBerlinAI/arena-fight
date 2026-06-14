@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { WebSocket } from 'ws';
-import type { ServerMessage } from '@precinct/shared';
+import type { ServerMessage } from '@mech-arena-fight/shared';
 import { BotClient } from './botClient';
 import { bootTestServer, startMatchedPair } from './helpers';
 import type { TestServer } from './helpers';

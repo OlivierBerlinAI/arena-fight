@@ -1,5 +1,5 @@
 /**
- * Shared helpers for the Precinct Duel Playwright suite.
+ * Shared helpers for the Mech Arena Fight Playwright suite.
  *
  * All tests drive TWO browser contexts against the single shared dev server
  * (workers: 1). Every test must create its own uniquely named room and close

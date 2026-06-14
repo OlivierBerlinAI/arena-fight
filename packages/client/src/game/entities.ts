@@ -3,7 +3,7 @@
  * particle effects. Everything is built from three.js primitives — no assets.
  */
 import * as THREE from 'three';
-import { GAME_MAP } from '@precinct/shared';
+import { GAME_MAP } from '@mech-arena-fight/shared';
 import type {
   Balance,
   MechSnap,
@@ -13,7 +13,7 @@ import type {
   Snapshot,
   UnitSnap,
   UnitType,
-} from '@precinct/shared';
+} from '@mech-arena-fight/shared';
 import type { ViewState } from './interpolation';
 import { TEAM_HEX, teamHex } from './colors';
 

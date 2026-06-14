@@ -4,10 +4,10 @@
  *   keyboard (desktop, default):
  *     W / S         drive forward / reverse along the facing direction
  *     A / D         rotate the mech left / right (this also turns the chase camera)
- *     M / left mb   primary fire (gatling as a walker, laser while hovering)
- *     N / right mb  secondary fire (rockets — walker only)
+ *     M / left mb   energy fire (gatling as a walker, laser while hovering)
+ *     N / right mb  kinetic fire (rockets — walker only)
  *     F             transform walker ⇄ hover
- *     1 / 2         build hovertank / dreadnought
+ *     1 / 2         build tank / heavy tank
  *     F3            debug overlay
  *
  *   Firing also accepts the mouse buttons (left = primary, right = secondary) so
@@ -23,7 +23,7 @@
  * `aimX,aimZ` is a point far ahead on that heading, so the authoritative
  * simulation (unchanged) sets the mech's yaw to the heading and fires along it.
  */
-import type { MechMode, PlayerInput, UnitType, Vec2 } from '@precinct/shared';
+import type { MechMode, PlayerInput, UnitType, Vec2 } from '@mech-arena-fight/shared';
 import type { ControlScheme } from '../controls';
 import { byId } from '../dom';
 import { TouchControls } from './touch';

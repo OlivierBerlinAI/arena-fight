@@ -1,5 +1,5 @@
 /** Shared palette for the 3D scene and the minimap. */
-import type { Ownership } from '@precinct/shared';
+import type { Ownership } from '@mech-arena-fight/shared';
 
 export const TEAM_HEX: [number, number] = [0x22d3ee, 0xf97316]; // cyan / orange
 export const TEAM_CSS: [string, string] = ['#22d3ee', '#f97316'];

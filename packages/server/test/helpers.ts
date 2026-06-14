@@ -3,8 +3,8 @@
  * in-process on an ephemeral port with accelerated pacing, connect bot pairs,
  * and run scripted build strategies.
  */
-import { getBalance } from '@precinct/shared';
-import type { BalancePresetName, UnitType } from '@precinct/shared';
+import { getBalance } from '@mech-arena-fight/shared';
+import type { BalancePresetName, UnitType } from '@mech-arena-fight/shared';
 import { startServer } from '../src/server';
 import type { StartServerOptions } from '../src/server';
 import { BotClient } from './botClient';

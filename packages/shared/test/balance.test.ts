@@ -6,7 +6,7 @@ import {
   TEST_BALANCE,
   getBalance,
   makeBalance,
-} from '@precinct/shared';
+} from '@mech-arena-fight/shared';
 import { tickN } from './helpers';
 
 describe('tick-rate scaling', () => {

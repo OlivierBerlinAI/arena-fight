@@ -5,8 +5,8 @@
  * rubble while destroyed).
  */
 import * as THREE from 'three';
-import { GAME_MAP, laneWaypoints } from '@precinct/shared';
-import type { Balance, Ownership, TurretSnap, Wall } from '@precinct/shared';
+import { GAME_MAP, laneWaypoints } from '@mech-arena-fight/shared';
+import type { Balance, Ownership, TurretSnap, Wall } from '@mech-arena-fight/shared';
 import { GRID_CENTER_HEX, GRID_HEX, GROUND_HEX, NEUTRAL_HEX, TEAM_HEX, teamHex } from './colors';
 
 const WALL_COLORS: Record<Wall['kind'], number> = {

@@ -12,7 +12,7 @@
 
 export type ControlScheme = 'keyboard' | 'touch';
 
-const STORAGE_KEY = 'precinct-duel-controls';
+const STORAGE_KEY = 'mech-arena-fight-controls';
 
 /** First-run default: touch when the primary pointer is coarse (phone/tablet). */
 function detectDefault(): ControlScheme {

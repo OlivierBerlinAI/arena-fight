@@ -1,4 +1,4 @@
-# Precinct Duel
+# Mech Arena Fight
 
 A web-based 1v1 base-assault arena inspired by the *Precinct Assault* mode of
 Future Cop: L.A.P.D. Two players each pilot a hovering combat mech — but the
@@ -44,10 +44,10 @@ still drive, turn and fire at once.
 | --- | --- |
 | `W` / `S` | Drive forward / reverse along the facing direction |
 | `A` / `D` | Turn left / right — the chase camera always looks where the mech faces |
-| `M` / left-click | Primary fire — **Gatling** as a walker, **Laser** while hovering. Both share the **heat meter**; overheating locks it for 2 s |
-| `N` / right-click | **Rockets** — splash damage, 3-rocket magazine, then a reload (**walker only** — disabled in hover) |
+| `M` / left-click | **Energy** fire — **Gatling** as a walker, **Laser** while hovering. Both share the **heat meter**; overheating locks it for 2 s |
+| `N` / right-click | **Kinetic** — rockets with splash damage, 3-rocket magazine, then a reload (**walker only** — disabled in hover) |
 | `F` | Transform **Walker ⇄ Hover**. Hover glides faster with low drag, but trades rockets for the laser |
-| `1` / `2` | Build **Hovertank** (50¢, 5 s) / **Dreadnought** (200¢, 15 s) |
+| `1` / `2` | Build **Tank** (50¢, 5 s) / **Heavy Tank** (400¢, 15 s) |
 | ♪ button | Mute / unmute sound (HUD top bar) |
 | `F3` | Debug overlay (fps, ping, ticks, snapshot age, entity counts) |
 
@@ -56,10 +56,10 @@ still drive, turn and fire at once.
 | Control | Action |
 | --- | --- |
 | Left thumbstick | Drive (push up / down) and steer (tilt left / right) — a floating joystick that appears where you press |
-| **FIRE** button | Hold for primary fire (gatling / laser) |
-| **RKT** button | Hold for rockets (walker only — greyed out while hovering) |
+| **ENERGY** button | Hold for energy fire (gatling / laser) |
+| **KINETIC** button | Hold for rockets (walker only — greyed out while hovering) |
 | **⇄** button | Transform walker ⇄ hover |
-| **HOVERTANK** / **DREADNOUGHT** | Tap to build |
+| **TANK** / **HEAVY TANK** | Tap to build |
 | ♪ button | Mute / unmute sound (HUD top bar) |
 
 - **Sound:** all audio is synthesised procedurally at runtime (retro 8-bit /

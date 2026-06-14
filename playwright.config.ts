@@ -33,7 +33,7 @@ export default defineConfig({
       // identical at any tick rate (balance is rescaled by tickRate), so this
       // only changes pacing/fidelity, not behaviour under test. Production stays
       // at 100 Hz. See the heartbeat-grace follow-up in packages/server/src/server.ts.
-      command: 'TICK_RATE=30 npm run dev -w @precinct/server',
+      command: 'TICK_RATE=30 npm run dev -w @mech-arena-fight/server',
       url: 'http://localhost:8080/health',
       reuseExistingServer: !process.env.CI,
       stdout: 'ignore',
@@ -41,7 +41,7 @@ export default defineConfig({
       timeout: 30_000,
     },
     {
-      command: 'npm run dev -w @precinct/client',
+      command: 'npm run dev -w @mech-arena-fight/client',
       url: 'http://localhost:5273',
       reuseExistingServer: !process.env.CI,
       stdout: 'ignore',

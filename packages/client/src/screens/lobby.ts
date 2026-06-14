@@ -1,4 +1,4 @@
-import type { RoomSummary } from '@precinct/shared';
+import type { RoomSummary } from '@mech-arena-fight/shared';
 import { byId, el } from '../dom';
 
 export class LobbyScreen {

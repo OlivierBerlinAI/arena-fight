@@ -7,14 +7,14 @@
  *           steer. Output is a unit-disc vector consumed by the InputManager,
  *           which feeds the SAME facing integrator the keyboard uses, so the
  *           feel and the wire input are identical.
- *   right — FIRE (hold → primary), RKT (hold → rockets, walker only) and a
- *           transform button (tap → walker ⇄ hover).
+ *   right — ENERGY (hold → primary) and KINETIC (hold → rockets, walker only)
+ *           side by side, with a transform button (tap → walker ⇄ hover) above.
  *
  * Built with Pointer Events, so it also responds to a mouse/pen — handy for
  * desktop users who pick touch mode and for the e2e suite. Multiple pointers
  * are tracked independently, so driving and firing at once works.
  */
-import type { MechMode } from '@precinct/shared';
+import type { MechMode } from '@mech-arena-fight/shared';
 
 export interface TouchCallbacks {
   /** transform button tapped (walker ⇄ hover) */
@@ -59,9 +59,12 @@ export class TouchControls {
     // ---- right: action buttons ----
     const actions = div('touch-actions');
     this.modeBtn = actionButton('touch-mode', '⇄', 'Transform');
-    this.altBtn = actionButton('touch-alt', 'RKT', 'Rockets');
-    this.fireBtn = actionButton('touch-fire', 'FIRE', 'Fire');
-    actions.append(this.modeBtn, this.altBtn, this.fireBtn);
+    this.altBtn = actionButton('touch-alt', 'KINETIC', 'Kinetic');
+    this.fireBtn = actionButton('touch-fire', 'ENERGY', 'Energy');
+    // The two attack buttons sit side by side so both fit on small screens.
+    const fireRow = div('touch-fire-row');
+    fireRow.append(this.altBtn, this.fireBtn);
+    actions.append(this.modeBtn, fireRow);
     this.root.appendChild(actions);
 
     parent.appendChild(this.root);

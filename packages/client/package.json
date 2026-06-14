@@ -1,5 +1,5 @@
 {
-  "name": "@precinct/client",
+  "name": "@mech-arena-fight/client",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@precinct/shared": "*",
+    "@mech-arena-fight/shared": "*",
     "three": "^0.171.0"
   },
   "devDependencies": {

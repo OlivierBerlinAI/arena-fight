@@ -13,8 +13,8 @@
 import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { WebSocketServer, WebSocket } from 'ws';
-import { isBalancePresetName } from '@precinct/shared';
-import type { BalancePresetName } from '@precinct/shared';
+import { isBalancePresetName } from '@mech-arena-fight/shared';
+import type { BalancePresetName } from '@mech-arena-fight/shared';
 
 /** Default simulation tick rate (Hz) when TICK_RATE / opts.tickRate are unset. */
 const DEFAULT_TICK_RATE = 100;

@@ -6,7 +6,7 @@
  * (core win or forfeit) → back to waiting with both players un-readied, so
  * re-readying starts an instant rematch on a fresh simulation.
  */
-import { GameSimulation, getBalance, SNAPSHOT_EVERY_TICKS } from '@precinct/shared';
+import { GameSimulation, getBalance, SNAPSHOT_EVERY_TICKS } from '@mech-arena-fight/shared';
 import type {
   BalancePresetName,
   MatchEndReason,
@@ -20,7 +20,7 @@ import type {
   SimCommand,
   SimEvent,
   UnitType,
-} from '@precinct/shared';
+} from '@mech-arena-fight/shared';
 import { send } from './connection';
 import type { ClientConn } from './connection';
 import type { Logger } from './logger';

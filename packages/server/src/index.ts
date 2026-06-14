@@ -1,5 +1,5 @@
 /**
- * Entrypoint: boots the authoritative Precinct Duel server with env-driven
+ * Entrypoint: boots the authoritative Mech Arena Fight server with env-driven
  * configuration (PORT, TICK_MS, LOG_LEVEL, BALANCE_PRESET). Tests import
  * startServer from ./server directly and boot in-process on an ephemeral port.
  */

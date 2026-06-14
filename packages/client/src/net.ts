@@ -2,7 +2,7 @@
  * Typed WebSocket wrapper. Sends ClientMessage, receives ServerMessage,
  * pings every 2 s to measure RTT, and logs every protocol error message.
  */
-import type { ClientMessage, ServerMessage } from '@precinct/shared';
+import type { ClientMessage, ServerMessage } from '@mech-arena-fight/shared';
 
 const PING_INTERVAL_MS = 2000;
 

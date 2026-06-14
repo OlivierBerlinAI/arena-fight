@@ -6,7 +6,7 @@
  * stays responsive. The mouse is not involved at all.
  */
 import * as THREE from 'three';
-import type { MechSnap } from '@precinct/shared';
+import type { MechSnap } from '@mech-arena-fight/shared';
 
 const DIST = 13;
 const HEIGHT = 14;

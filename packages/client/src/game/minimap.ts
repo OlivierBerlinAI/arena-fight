@@ -3,8 +3,8 @@
  * owner-colored triangles, robots as dots, mechs as larger dots, own view
  * marker. Redrawn every frame from the latest snapshot (~30 entities).
  */
-import { GAME_MAP, laneWaypoints } from '@precinct/shared';
-import type { PlayerIndex, Snapshot, Wall } from '@precinct/shared';
+import { GAME_MAP, laneWaypoints } from '@mech-arena-fight/shared';
+import type { PlayerIndex, Snapshot, Wall } from '@mech-arena-fight/shared';
 import { teamCss, TEAM_CSS } from './colors';
 
 const WALL_CSS: Record<Wall['kind'], string> = {

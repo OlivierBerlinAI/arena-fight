@@ -3,14 +3,14 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Precinct Duel</title>
+    <title>Mech Arena Fight</title>
   </head>
   <body>
     <div id="app">
       <!-- ============ Name screen ============ -->
       <div id="screen-name" class="screen active">
         <div class="panel center-panel">
-          <h1 class="title">PRECINCT<span class="accent">DUEL</span></h1>
+          <h1 class="title">MECH ARENA <span class="accent">FIGHT</span></h1>
           <p class="subtitle">1v1 base assault &mdash; build robots, capture turrets, breach the core</p>
           <div class="form-row">
             <input
@@ -147,12 +147,12 @@
           <div id="build-bar" data-testid="build-bar">
             <button id="build-hovertank" data-testid="build-hovertank" class="build-btn">
               <span class="build-key">1</span>
-              <span class="build-name">HOVERTANK</span>
+              <span class="build-name">TANK</span>
               <span class="build-info" id="build-hovertank-info"></span>
             </button>
             <button id="build-dreadnought" data-testid="build-dreadnought" class="build-btn">
               <span class="build-key">2</span>
-              <span class="build-name">DREADNOUGHT</span>
+              <span class="build-name">HEAVY TANK</span>
               <span class="build-info" id="build-dreadnought-info"></span>
             </button>
             <div id="build-queue" data-testid="build-queue"></div>
@@ -206,19 +206,19 @@
           <table class="controls-table kb-only">
             <tr><td><kbd>W</kbd> / <kbd>S</kbd></td><td>Drive forward / reverse</td></tr>
             <tr><td><kbd>A</kbd> / <kbd>D</kbd></td><td>Turn left / right (the camera follows)</td></tr>
-            <tr><td><kbd>M</kbd> / left-click</td><td>Fire primary &mdash; gatling, or laser while hovering</td></tr>
-            <tr><td><kbd>N</kbd> / right-click</td><td>Fire rockets (walker only)</td></tr>
+            <tr><td><kbd>M</kbd> / left-click</td><td><strong>Energy</strong> &mdash; gatling, or laser while hovering</td></tr>
+            <tr><td><kbd>N</kbd> / right-click</td><td><strong>Kinetic</strong> &mdash; rockets (walker only)</td></tr>
             <tr><td><kbd>F</kbd></td><td>Transform walker &harr; hover</td></tr>
-            <tr><td><kbd>1</kbd> / <kbd>2</kbd></td><td>Build hovertank / dreadnought</td></tr>
+            <tr><td><kbd>1</kbd> / <kbd>2</kbd></td><td>Build Tank / Heavy Tank</td></tr>
             <tr><td>&#9834; button</td><td>Mute / unmute sound</td></tr>
             <tr><td><kbd>F3</kbd></td><td>Debug overlay</td></tr>
           </table>
           <table class="controls-table touch-only">
             <tr><td>Left stick</td><td>Drive (push up / down) &amp; steer (tilt left / right)</td></tr>
-            <tr><td><kbd>FIRE</kbd></td><td>Hold &mdash; gatling, or laser while hovering</td></tr>
-            <tr><td><kbd>RKT</kbd></td><td>Hold to fire rockets (walker only)</td></tr>
+            <tr><td><kbd>ENERGY</kbd></td><td>Hold &mdash; gatling, or laser while hovering</td></tr>
+            <tr><td><kbd>KINETIC</kbd></td><td>Hold to fire rockets (walker only)</td></tr>
             <tr><td><kbd>&#8644;</kbd></td><td>Transform walker &harr; hover</td></tr>
-            <tr><td>HOVERTANK / DREADNOUGHT</td><td>Tap to build</td></tr>
+            <tr><td>TANK / HEAVY TANK</td><td>Tap to build</td></tr>
             <tr><td>&#9834; button</td><td>Mute / unmute sound</td></tr>
           </table>
           <p class="dim kb-only">Tip: the mouse buttons also fire &mdash; left-click for primary, right-click for rockets.</p>

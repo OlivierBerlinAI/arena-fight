@@ -7,12 +7,10 @@
  * no-ops. The context starts suspended (autoplay policy) and resumes on the
  * first user gesture. Mute state persists in localStorage.
  */
-import type { PlayerIndex, ProjectileSnap, SimEvent } from '@precinct/shared';
+import type { PlayerIndex, ProjectileSnap, SimEvent } from '@mech-arena-fight/shared';
 
-const MUSIC_MUTE_KEY = 'precinct.muted.music';
-const SFX_MUTE_KEY = 'precinct.muted.sfx';
-/** Pre-split single mute flag; seeds both channels for returning users. */
-const LEGACY_MUTE_KEY = 'precinct.muted';
+const MUSIC_MUTE_KEY = 'mech-arena-fight.muted.music';
+const SFX_MUTE_KEY = 'mech-arena-fight.muted.sfx';
 
 type Wave = OscillatorType | PeriodicWave;
 
@@ -147,9 +145,8 @@ export class SoundEngine {
 
   constructor() {
     try {
-      const legacy = localStorage.getItem(LEGACY_MUTE_KEY);
-      this.musicMuted = (localStorage.getItem(MUSIC_MUTE_KEY) ?? legacy) === '1';
-      this.sfxMuted = (localStorage.getItem(SFX_MUTE_KEY) ?? legacy) === '1';
+      this.musicMuted = localStorage.getItem(MUSIC_MUTE_KEY) === '1';
+      this.sfxMuted = localStorage.getItem(SFX_MUTE_KEY) === '1';
     } catch {
       /* private mode / no storage — default unmuted */
     }

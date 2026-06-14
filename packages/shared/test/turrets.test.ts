@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GameSimulation } from '@precinct/shared';
+import { GameSimulation } from '@mech-arena-fight/shared';
 import {
   driveToward,
   projectileTracker,

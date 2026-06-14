@@ -19,8 +19,8 @@
  * Re-deriving from the latest snapshot each frame keeps the prediction anchored
  * and drift-free — no rollback buffer and no protocol change (no input acks).
  */
-import { clampLen, collideWithStatics } from '@precinct/shared';
-import type { Balance, MechMode, MechSnap, SimState, Snapshot, Vec2 } from '@precinct/shared';
+import { clampLen, collideWithStatics } from '@mech-arena-fight/shared';
+import type { Balance, MechMode, MechSnap, SimState, Snapshot, Vec2 } from '@mech-arena-fight/shared';
 
 /** Never extrapolate further than this if snapshots stall (ms). */
 const MAX_AHEAD_MS = 250;

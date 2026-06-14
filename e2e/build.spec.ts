@@ -1,8 +1,9 @@
 /**
  * Build flow inside a running test-preset match.
  *
- * Test preset: 500 starting credits, +10/s income, hovertank costs 50 and
- * builds in ~0.5 s, dreadnought costs 200 and builds in ~1.5 s.
+ * Test preset: 500 starting credits, +10/s income, the TANK (hovertank) costs
+ * 50 and builds in ~0.5 s, the HEAVY TANK (dreadnought) costs 200 here and
+ * builds in ~1.5 s (it costs 400 in the live game; the test preset is cheaper).
  *
  * Two timing realities shape these tests:
  *  - The credits dip and the queue chips are short-lived, so assertions read
@@ -83,7 +84,7 @@ test.describe('build flow', () => {
     const watch = await readBuildWatch(pageA);
     // exactly one hovertank deduction: income only ever adds credits (so a
     // skipped HUD update can shrink the apparent drop by ~10/s of income at
-    // most), and a dreadnought (200) or a double-build would show a far
+    // most), and a heavy tank (200) or a double-build would show a far
     // larger drop
     expect(watch.maxCreditDrop).toBeGreaterThanOrEqual(HOVERTANK_COST - 10);
     expect(watch.maxCreditDrop).toBeLessThanOrEqual(HOVERTANK_COST + 5);
@@ -136,9 +137,9 @@ test.describe('build flow', () => {
     await enterName(pageB, 'Idler');
     await startMatch(pageA, pageB, uniqueRoomName('e2e-queue'));
 
-    // Spam DREADNOUGHTS (1.5 s build) rather than hovertanks (0.5 s) so the
-    // queue fills faster than its head drains. Wait until three are
-    // affordable up front (3 × 200, plus a couple of income ticks of margin).
+    // Spam HEAVY TANKS (1.5 s build) rather than tanks (0.5 s) so the queue
+    // fills faster than its head drains. Wait until three are affordable up
+    // front (3 × 200, plus a couple of income ticks of margin).
     await waitForCredits(pageA, 620);
 
     // Arm the queue watcher, then fire all 8 hotkey presses as one in-page

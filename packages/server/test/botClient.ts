@@ -6,7 +6,7 @@
  */
 import { WebSocket } from 'ws';
 import type { RawData } from 'ws';
-import { NULL_INPUT } from '@precinct/shared';
+import { NULL_INPUT } from '@mech-arena-fight/shared';
 import type {
   BalancePresetName,
   ClientMessage,
@@ -17,7 +17,7 @@ import type {
   SimEvent,
   Snapshot,
   UnitType,
-} from '@precinct/shared';
+} from '@mech-arena-fight/shared';
 
 type ServerMessageType = ServerMessage['type'];
 type MsgOf<T extends ServerMessageType> = Extract<ServerMessage, { type: T }>;

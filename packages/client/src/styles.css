@@ -1,4 +1,4 @@
-/* Precinct Duel — dark late-90s sci-fi UI */
+/* Mech Arena Fight — dark late-90s sci-fi UI */
 
 :root {
   --bg: #0a0e14;
@@ -546,6 +546,11 @@ input[type='text']:focus {
 }
 
 #build-queue {
+  /* Anchored to the right of the build bar so its reserved width doesn't pull
+   * the two build buttons off-centre — the buttons stay screen-centred. */
+  position: absolute;
+  left: 100%;
+  bottom: 0;
   display: flex;
   gap: 6px;
   align-items: flex-end;
@@ -898,10 +903,19 @@ body.touch-active table.touch-only {
 .touch-btn.pressed {
   transform: scale(0.93);
 }
+/* The two attack buttons (KINETIC | ENERGY) sit side by side under the
+ * transform button so both stay visible on small screens. */
+#touch-fire-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  pointer-events: none; /* children re-enable it */
+}
 #touch-fire {
   width: 100px;
   height: 100px;
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--cyan);
   border-color: var(--cyan);
@@ -913,7 +927,7 @@ body.touch-active table.touch-only {
 #touch-alt {
   width: 72px;
   height: 72px;
-  font-size: 13px;
+  font-size: 11px;
   color: var(--yellow);
   border-color: rgba(250, 204, 21, 0.7);
 }

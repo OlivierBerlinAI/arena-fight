@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GameSimulation, SIM_TICK_RATE, TEST_BALANCE, aliveUnitCount } from '@precinct/shared';
+import { GameSimulation, SIM_TICK_RATE, TEST_BALANCE, aliveUnitCount } from '@mech-arena-fight/shared';
 import { IDLE, buildCmd, tickN } from './helpers';
 
 describe('economy', () => {

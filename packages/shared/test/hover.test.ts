@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { GameSimulation, len } from '@precinct/shared';
-import type { PlayerInput } from '@precinct/shared';
+import { GameSimulation, len } from '@mech-arena-fight/shared';
+import type { PlayerInput } from '@mech-arena-fight/shared';
 import { makeInput, projectileTracker, teleportMech, tickN } from './helpers';
 
 describe('hover mode — movement', () => {

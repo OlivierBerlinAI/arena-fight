@@ -6,8 +6,8 @@
  */
 import { randomBytes } from 'node:crypto';
 import type { WebSocket } from 'ws';
-import { PROTOCOL_VERSION } from '@precinct/shared';
-import type { BalancePresetName, ClientMessage, RoomSummary, ServerErrorCode } from '@precinct/shared';
+import { PROTOCOL_VERSION } from '@mech-arena-fight/shared';
+import type { BalancePresetName, ClientMessage, RoomSummary, ServerErrorCode } from '@mech-arena-fight/shared';
 import { send } from './connection';
 import type { ClientConn } from './connection';
 import type { Logger } from './logger';

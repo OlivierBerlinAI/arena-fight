@@ -1,5 +1,5 @@
 {
-  "name": "precinct-duel",
+  "name": "mech-arena-fight",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -7,7 +7,7 @@
     "packages/*"
   ],
   "scripts": {
-    "dev": "concurrently -k -n server,client -c blue,green \"npm run dev -w @precinct/server\" \"npm run dev -w @precinct/client\"",
+    "dev": "concurrently -k -n server,client -c blue,green \"npm run dev -w @mech-arena-fight/server\" \"npm run dev -w @mech-arena-fight/client\"",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",

@@ -186,7 +186,7 @@ function buildDefault(T: number): Balance {
         projectileSpeed: 45,
       },
       dreadnought: {
-        cost: 200,
+        cost: 400,
         buildTicks: 15 * T,
         speed: 2.6,
         hp: 400,
@@ -241,6 +241,10 @@ function buildTest(T: number): Balance {
       },
       dreadnought: {
         ...base.units.dreadnought,
+        // Cheaper than the live game's 400 so accelerated tests can queue a few
+        // up front without inflating starting credits (which would overload the
+        // winner's client in the full-match e2e).
+        cost: 200,
         buildTicks: Math.round(1.5 * T),
         speed: 12,
       },

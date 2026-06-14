@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { GAME_MAP, getBalance } from '@precinct/shared';
-import type { MechSnap } from '@precinct/shared';
+import { GAME_MAP, getBalance } from '@mech-arena-fight/shared';
+import type { MechSnap } from '@mech-arena-fight/shared';
 import { LocalMechPredictor } from '../src/game/prediction';
 
 const BALANCE = getBalance('default'); // reference tick rate

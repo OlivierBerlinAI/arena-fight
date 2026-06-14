@@ -1,4 +1,4 @@
-# One-Shot Prompt: "Precinct Duel" — Web-based 1v1 Base Assault
+# One-Shot Prompt: "Mech Arena Fight" — Web-based 1v1 Base Assault
 
 > Paste everything below this line into a fresh session.
 

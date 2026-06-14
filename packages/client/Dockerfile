@@ -11,7 +11,7 @@ RUN npm ci --ignore-scripts
 COPY tsconfig.base.json ./
 COPY packages/shared ./packages/shared
 COPY packages/client ./packages/client
-RUN npm run build -w @precinct/client
+RUN npm run build -w @mech-arena-fight/client
 
 # --- serve the build with an unprivileged nginx (listens on 8080, runs as 101)-
 FROM nginxinc/nginx-unprivileged:1.27-alpine AS runtime

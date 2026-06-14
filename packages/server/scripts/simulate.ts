@@ -11,8 +11,8 @@
  *
  * Run from the repo root: npm run simulate
  */
-import { getBalance } from '@precinct/shared';
-import type { SimEvent } from '@precinct/shared';
+import { getBalance } from '@mech-arena-fight/shared';
+import type { SimEvent } from '@mech-arena-fight/shared';
 import { isLogLevel } from '../src/logger';
 import { startServer } from '../src/server';
 import { BotClient } from '../test/botClient';

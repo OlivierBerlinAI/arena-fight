@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GameSimulation, TEST_BALANCE } from '@precinct/shared';
+import { GameSimulation, TEST_BALANCE } from '@mech-arena-fight/shared';
 import { deployUnits, makeInput, projectileTracker, teleportMech, tickN } from './helpers';
 
 describe('gatling', () => {

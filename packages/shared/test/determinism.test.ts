@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { GameSimulation } from '@precinct/shared';
-import type { PlayerInput, SimCommand } from '@precinct/shared';
+import { GameSimulation } from '@mech-arena-fight/shared';
+import type { PlayerInput, SimCommand } from '@mech-arena-fight/shared';
 import { buildCmd, makeInput } from './helpers';
 
 /**

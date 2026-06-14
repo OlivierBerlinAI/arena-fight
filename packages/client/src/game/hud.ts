@@ -3,13 +3,13 @@
  * (costs and build times from the active balance preset), the build queue and
  * the event feed (phrased from the local player's perspective).
  */
-import type { Balance, MechSnap, PlayerIndex, PlayerSnap, SimEvent, UnitType } from '@precinct/shared';
+import type { Balance, MechSnap, PlayerIndex, PlayerSnap, SimEvent, UnitType } from '@mech-arena-fight/shared';
 import { byId, el, formatTime } from '../dom';
 
 const MAX_FEED_ITEMS = 4;
 const FEED_ITEM_TTL_MS = 6000;
 
-const UNIT_LABEL: Record<UnitType, string> = { hovertank: 'Hovertank', dreadnought: 'Dreadnought' };
+const UNIT_LABEL: Record<UnitType, string> = { hovertank: 'Tank', dreadnought: 'Heavy Tank' };
 
 export class Hud {
   private readonly healthRoot = byId('hud-health');
@@ -111,7 +111,7 @@ export class Hud {
       fill.style.height = `${i === 0 ? item.progress * 100 : 0}%`;
       const chip = el('div', { className: 'queue-item', testid: 'queue-item' }, [
         fill,
-        el('div', { className: 'q-label', text: item.unit === 'hovertank' ? 'HT' : 'DN' }),
+        el('div', { className: 'q-label', text: item.unit === 'hovertank' ? 'TK' : 'HV' }),
       ]);
       this.queueRoot.appendChild(chip);
     });

@@ -1,7 +1,7 @@
 import { byId } from '../dom';
 import { ControlSchemeToggle } from '../controls';
 
-const NAME_KEY = 'precinct-duel-name';
+const NAME_KEY = 'mech-arena-fight-name';
 
 export class NameScreen {
   private readonly input = byId<HTMLInputElement>('name-input');

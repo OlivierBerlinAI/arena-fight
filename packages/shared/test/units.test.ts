@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { GAME_MAP, GameSimulation, TEST_BALANCE, dist, laneWaypoints } from '@precinct/shared';
-import type { SimEvent } from '@precinct/shared';
+import { GAME_MAP, GameSimulation, TEST_BALANCE, dist, laneWaypoints } from '@mech-arena-fight/shared';
+import type { SimEvent } from '@mech-arena-fight/shared';
 import {
   IDLE,
   buildCmd,

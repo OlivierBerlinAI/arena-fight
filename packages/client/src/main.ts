@@ -4,8 +4,8 @@
  * Handles disconnects at every stage: error banner + back to the name screen.
  */
 import './styles.css';
-import { PROTOCOL_VERSION } from '@precinct/shared';
-import type { PlayerIndex, RoomInfo, ServerMessage } from '@precinct/shared';
+import { PROTOCOL_VERSION } from '@mech-arena-fight/shared';
+import type { PlayerIndex, RoomInfo, ServerMessage } from '@mech-arena-fight/shared';
 import { Net, isTestMode, serverUrl } from './net';
 import { byId } from './dom';
 import { gameHook, installGameHook, resetMatchHook } from './testhook';

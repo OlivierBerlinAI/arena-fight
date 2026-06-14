@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { validateClientMessage } from '@precinct/shared';
+import { validateClientMessage } from '@mech-arena-fight/shared';
 
 const baseInput = { type: 'input', mx: 0, mz: 0, aimX: 0, aimZ: 0, fire: false, alt: false };
 

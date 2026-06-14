@@ -3,7 +3,7 @@
  * three.js renderer, entity views, snapshot interpolation, input, chase
  * camera, HUD, minimap and debug overlay — and keeps window.__game fresh.
  */
-import { getBalance } from '@precinct/shared';
+import { getBalance } from '@mech-arena-fight/shared';
 import type {
   Balance,
   BalancePresetName,
@@ -11,7 +11,7 @@ import type {
   SimEvent,
   Snapshot,
   UnitType,
-} from '@precinct/shared';
+} from '@mech-arena-fight/shared';
 import type { Net } from '../net';
 import { gameHook } from '../testhook';
 import type { GameEntityInfo } from '../testhook';

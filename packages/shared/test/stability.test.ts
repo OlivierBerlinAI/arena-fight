@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { GameSimulation, TEST_BALANCE, aliveUnitCount } from '@precinct/shared';
-import type { SimCommand } from '@precinct/shared';
+import { GameSimulation, TEST_BALANCE, aliveUnitCount } from '@mech-arena-fight/shared';
+import type { SimCommand } from '@mech-arena-fight/shared';
 import { buildCmd, expectAllFinite, makeInput } from './helpers';
 
 describe('stability at maximum entity count', () => {

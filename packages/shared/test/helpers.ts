@@ -4,7 +4,7 @@
  * entity by writing state.*.pos directly is allowed where it keeps a test
  * focused (e.g. placing a mech next to a turret pad).
  */
-import { GAME_MAP, GameSimulation, NULL_INPUT, circleIntersectsAABB } from '@precinct/shared';
+import { GAME_MAP, GameSimulation, NULL_INPUT, circleIntersectsAABB } from '@mech-arena-fight/shared';
 import type {
   PlayerIndex,
   PlayerInput,
@@ -15,7 +15,7 @@ import type {
   UnitState,
   UnitType,
   Vec2,
-} from '@precinct/shared';
+} from '@mech-arena-fight/shared';
 
 export type InputPair = readonly [PlayerInput | null, PlayerInput | null];
 export type InputSource = InputPair | ((tick: number) => InputPair);

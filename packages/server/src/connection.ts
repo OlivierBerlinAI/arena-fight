@@ -6,8 +6,8 @@
  */
 import { WebSocket } from 'ws';
 import type { RawData } from 'ws';
-import { parseClientMessage } from '@precinct/shared';
-import type { ServerMessage } from '@precinct/shared';
+import { parseClientMessage } from '@mech-arena-fight/shared';
+import type { ServerMessage } from '@mech-arena-fight/shared';
 import type { LobbyManager } from './lobby';
 
 export interface ClientConn {

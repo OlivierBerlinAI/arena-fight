@@ -9,7 +9,7 @@
  * network hiccup does not starve the interpolator. The local player's own mech
  * bypasses this buffer entirely via client-side prediction (see prediction.ts).
  */
-import type { MechSnap, ProjectileSnap, Snapshot, TurretSnap, UnitSnap } from '@precinct/shared';
+import type { MechSnap, ProjectileSnap, Snapshot, TurretSnap, UnitSnap } from '@mech-arena-fight/shared';
 
 export const MIN_RENDER_DELAY_MS = 55;
 export const MAX_RENDER_DELAY_MS = 140;

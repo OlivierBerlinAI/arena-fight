@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { GAME_MAP, GameSimulation, len } from '@precinct/shared';
+import { GAME_MAP, GameSimulation, len } from '@mech-arena-fight/shared';
 import { makeInput, penetratesAnyWall, teleportMech } from './helpers';
 
 describe('mech movement', () => {
