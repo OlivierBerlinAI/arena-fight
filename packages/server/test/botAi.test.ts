@@ -60,6 +60,11 @@ describe('bot ai', () => {
   it('glides in hover toward a distant goal when nothing is near (normal/hard only)', () => {
     const sim = new GameSimulation({ seed: 7, balance: TEST_BALANCE });
     sim.state.mechs[0].pos = { x: 200, z: 200 }; // enemy far → long travel to the objective
+    // The bot already owns its in-base "last defense" turret, so the only goals
+    // left are far away — otherwise it would just step over to capture it.
+    for (const t of sim.state.turrets) {
+      if (t.pos.x === 40 && t.pos.z === 40) t.owner = 1;
+    }
     const hard = chooseInput(sim.snapshot(), 1, sim.balance, BOT_TUNING.hard);
     expect(hard.mode).toBe('hover');
     const easy = chooseInput(sim.snapshot(), 1, sim.balance, BOT_TUNING.easy);

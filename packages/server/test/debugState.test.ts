@@ -71,7 +71,7 @@ describe('debug & health endpoints', () => {
     expect(room.economy).toHaveLength(2);
     expect(room.economy?.[0].credits).toBeGreaterThanOrEqual(0);
     expect(room.snapshot?.mechs).toHaveLength(2);
-    expect(room.snapshot?.turrets).toHaveLength(4);
+    expect(room.snapshot?.turrets).toHaveLength(6);
     expect(room.snapshot?.tick).toBeGreaterThan(0);
   });
 });

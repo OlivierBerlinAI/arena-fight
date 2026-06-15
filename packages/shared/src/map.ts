@@ -4,7 +4,8 @@
  * Player 0's base sits in the south-west corner, player 1's in the north-east
  * (every player-1 coordinate is the negation of the player-0 one). Two lanes
  * (left = west/north edges, right = south/east edges) connect the bases. Four
- * neutral turrets guard the lanes at the edge midpoints. The middle is open.
+ * neutral turrets guard the lanes at the edge midpoints; the middle is open.
+ * Each base also holds one neutral "last defense" turret inside its compound.
  *
  * Both server collision and client rendering are generated from this data.
  */
@@ -148,6 +149,12 @@ export const GAME_MAP: MapDef = {
     { x: 0, z: 52 },
     { x: 52, z: 0 },
     { x: 0, z: -52 },
+    // "Last defense" turrets, one inside each base compound. Like every other
+    // turret they spawn neutral and must be captured (and can be re-captured by
+    // the enemy). Placed centrally behind the gate so their range covers both
+    // the gate approach and the core pad, clear of the factory and spawns.
+    { x: -40, z: -40 }, // base 0 (south-west)
+    { x: 40, z: 40 }, // base 1 (north-east)
   ],
   lanes: { left: leftLane, right: rightLane },
 };
