@@ -153,8 +153,8 @@ export const GAME_MAP: MapDef = {
     // turret they spawn neutral and must be captured (and can be re-captured by
     // the enemy). Sit on the free side of the compound, about halfway between
     // the inner gate and the back corner, clear of the factory and spawns.
-    { x: -46, z: -37 }, // base 0 (gate-ward of the north-west corner)
-    { x: 46, z: 37 }, // base 1 (mirror)
+    { x: -46, z: -37.6 }, // base 0 (gate-ward of the north-west corner)
+    { x: 46, z: 37.6 }, // base 1 (mirror)
   ],
   lanes: { left: leftLane, right: rightLane },
 };

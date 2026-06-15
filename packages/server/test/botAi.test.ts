@@ -63,7 +63,7 @@ describe('bot ai', () => {
     // The bot already owns its in-base "last defense" turret, so the only goals
     // left are far away — otherwise it would just step over to capture it.
     for (const t of sim.state.turrets) {
-      if (t.pos.x === 46 && t.pos.z === 37) t.owner = 1;
+      if (t.pos.x === 46 && t.pos.z === 37.6) t.owner = 1;
     }
     const hard = chooseInput(sim.snapshot(), 1, sim.balance, BOT_TUNING.hard);
     expect(hard.mode).toBe('hover');
