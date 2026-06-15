@@ -15,7 +15,7 @@
  *
  * `brakeFactor` multiplies the friction while the turn is decelerating (the key
  * is released, or you steer against the current spin), so the rotation brakes
- * harder than it builds up — e.g. 1.5 = stops 50% faster than it accelerates.
+ * harder than it builds up — e.g. 2 = brakes twice as hard as it accelerates.
  *
  * Mech *movement* (max speed / accel / drag) is server-authoritative and tuned
  * over the wire via the `tuneMech` message, not here.
@@ -28,8 +28,8 @@ export interface TurnTune {
 }
 
 export const TURN: Record<'walker' | 'hover', TurnTune> = {
-  walker: { accel: 7, friction: 5, max: 2.5, brakeFactor: 1.5 },
-  hover: { accel: 14, friction: 2.6, max: 1.3, brakeFactor: 1.5 },
+  walker: { accel: 7, friction: 5, max: 2.5, brakeFactor: 2 },
+  hover: { accel: 8, friction: 2.6, max: 1.3, brakeFactor: 2 },
 };
 
 /**
