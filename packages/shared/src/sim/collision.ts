@@ -44,19 +44,25 @@ export function collideWithStatics(pos: Vec2, radius: number, state: SimState, b
 interface Mover {
   pos: Vec2;
   radius: number;
+  /** Mechs yield to robots so the player cannot shove tanks around. */
+  isMech: boolean;
 }
 
 /**
  * Pairwise separation of all moving bodies (mechs + robots) so they do not
  * stack inside each other, then a final static pass. Deterministic order.
+ *
+ * Mech-vs-mech and robot-vs-robot pairs split the overlap evenly. A mech
+ * touching a robot, however, is shoved out the full distance on its own — the
+ * robot stays put, so a player's mech cannot push tanks around.
  */
 export function separateMovers(state: SimState, balance: Balance): void {
   const movers: Mover[] = [];
   for (const m of state.mechs) {
-    if (m.alive) movers.push({ pos: m.pos, radius: balance.mech.radius });
+    if (m.alive) movers.push({ pos: m.pos, radius: balance.mech.radius, isMech: true });
   }
   for (const u of state.units) {
-    movers.push({ pos: u.pos, radius: balance.units[u.type].radius });
+    movers.push({ pos: u.pos, radius: balance.units[u.type].radius, isMech: false });
   }
   for (let i = 0; i < movers.length; i++) {
     for (let j = i + 1; j < movers.length; j++) {
@@ -81,11 +87,18 @@ export function separateMovers(state: SimState, balance: Balance): void {
         nz = 0;
         overlap = minDist;
       }
-      const half = overlap / 2;
-      a.pos.x -= nx * half;
-      a.pos.z -= nz * half;
-      b.pos.x += nx * half;
-      b.pos.z += nz * half;
+      // Even split by default; a mech meeting a robot eats the whole push so
+      // the robot (tank) holds its ground.
+      let wA = 0.5;
+      let wB = 0.5;
+      if (a.isMech !== b.isMech) {
+        wA = a.isMech ? 1 : 0;
+        wB = b.isMech ? 1 : 0;
+      }
+      a.pos.x -= nx * overlap * wA;
+      a.pos.z -= nz * overlap * wA;
+      b.pos.x += nx * overlap * wB;
+      b.pos.z += nz * overlap * wB;
     }
   }
   for (const m of movers) {

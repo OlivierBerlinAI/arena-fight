@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { GAME_MAP, GameSimulation, TEST_BALANCE, dist, laneWaypoints } from '@mech-arena-fight/shared';
+import {
+  GAME_MAP,
+  GameSimulation,
+  TEST_BALANCE,
+  dist,
+  laneWaypoints,
+  separateMovers,
+} from '@mech-arena-fight/shared';
 import type { SimEvent } from '@mech-arena-fight/shared';
 import {
   IDLE,
@@ -98,6 +105,23 @@ describe('factory and units', () => {
     // Both mechs really are on the pads the whole time.
     expect(dist(sim.state.mechs[0].pos, pad1)).toBeLessThan(pad1.radius);
     expect(dist(sim.state.mechs[1].pos, pad0)).toBeLessThan(pad0.radius);
+  });
+
+  it('a mech cannot push a robot — it gets shoved out itself instead', () => {
+    const sim = new GameSimulation({ seed: 46, balance: TEST_BALANCE });
+    const [tank] = deployUnits(sim, 0, 'hovertank', 1);
+    tank.pos = { x: 0, z: 0 };
+    const tankBefore = { ...tank.pos };
+    // Drive the mech right into the tank from the west.
+    teleportMech(sim, 0, { x: -0.2, z: 0 });
+
+    separateMovers(sim.state, sim.balance);
+
+    // The tank held its ground; only the mech moved.
+    expect(dist(tank.pos, tankBefore)).toBeLessThan(1e-9);
+    const minDist = sim.balance.mech.radius + sim.balance.units.hovertank.radius;
+    expect(dist(sim.state.mechs[0].pos, tank.pos)).toBeCloseTo(minDist, 5);
+    expect(sim.state.mechs[0].pos.x).toBeLessThan(-0.2); // pushed further west
   });
 });
 
