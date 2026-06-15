@@ -151,10 +151,10 @@ export const GAME_MAP: MapDef = {
     { x: 0, z: -52 },
     // "Last defense" turrets, one inside each base compound. Like every other
     // turret they spawn neutral and must be captured (and can be re-captured by
-    // the enemy). Tucked into the free interior corner — diagonally opposite the
-    // factory, the other occupied corner — clear of the walls and mech spawn.
-    { x: -56, z: -38 }, // base 0 (north-west interior corner)
-    { x: 56, z: 38 }, // base 1 (mirror)
+    // the enemy). Sit on the free side of the compound, about halfway between
+    // the inner gate and the back corner, clear of the factory and spawns.
+    { x: -46, z: -37 }, // base 0 (gate-ward of the north-west corner)
+    { x: 46, z: 37 }, // base 1 (mirror)
   ],
   lanes: { left: leftLane, right: rightLane },
 };
