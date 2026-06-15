@@ -62,6 +62,10 @@ class App {
     },
     (difficulty) => {
       this.sound.uiClick();
+      // Picking a difficulty jumps straight into the match (no waiting room to
+      // ready up in), so this click is the only user gesture we can use to
+      // legally request fullscreen for a touch player.
+      if (getControlScheme() === 'touch') enterFullscreen();
       this.net.send({ type: 'playVsBot', difficulty });
     }
   );
