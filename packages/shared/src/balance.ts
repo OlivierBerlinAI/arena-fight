@@ -1,9 +1,12 @@
 /**
- * Every tunable gameplay number lives here. Durations are expressed in
- * simulation ticks; the simulation runs at a configurable tick rate (ticks per
- * simulated second) carried on each Balance as `tickRate`. Every tick-based
- * field is derived from that rate, so the game feel — expressed in seconds — is
- * identical at any tick rate; only the simulation fidelity changes.
+ * Resolves the editable gameplay config (see balance.config.ts) into the
+ * tick-scaled `Balance` the simulation consumes.
+ *
+ * Durations in the config are expressed in seconds; here they are converted to
+ * simulation ticks at a configurable tick rate (ticks per simulated second)
+ * carried on each Balance as `tickRate`. Because every tick-based field is
+ * `seconds * tickRate`, the game feel — expressed in seconds — is identical at
+ * any tick rate; only the simulation fidelity changes.
  *
  * SIM_TICK_RATE is the reference rate the exported DEFAULT_BALANCE / TEST_BALANCE
  * are scaled for (and the default for makeBalance / getBalance). The standalone
@@ -11,7 +14,17 @@
  * startServer), rescales the balance with getBalance(preset, rate) and sends it
  * to clients in matchStart. The server's TICK_MS env var changes wall-clock
  * pacing only — it never changes simulation semantics.
+ *
+ * To change gameplay numbers, edit balance.config.ts — not this file.
  */
+import type { ProjectileKind } from './sim/state.js';
+import type {
+  BalanceConfig,
+  DamageModifierConfig,
+  DamageTargetClass,
+  UnitConfig,
+} from './balance.config.js';
+import { BALANCE_CONFIG, TEST_CONFIG_OVERRIDES } from './balance.config.js';
 
 export const SIM_TICK_RATE = 30;
 export const DEFAULT_TICK_MS = 1000 / SIM_TICK_RATE;
@@ -122,155 +135,169 @@ export interface Balance {
     /** radius of the capture pad around the tower */
     padRadius: number;
   };
+  /**
+   * Per-weapon damage multipliers vs each target class (1 = full damage),
+   * resolved from balance.config.ts into a complete table so the sim can look
+   * up `damageModifiers[weaponKind][targetClass]` without any defaulting.
+   */
+  damageModifiers: Record<ProjectileKind, Record<DamageTargetClass, number>>;
 }
 
-/**
- * Build the default preset scaled to `T` ticks per simulated second. Every
- * tick-based field is `seconds * T`, so the same balance in seconds holds at
- * any tick rate; coolPerTick is a per-tick rate so it divides by T.
- */
-function buildDefault(T: number): Balance {
+/** Round a duration expressed in seconds to whole simulation ticks. */
+function ticks(seconds: number, T: number): number {
+  return Math.round(seconds * T);
+}
+
+function scaleUnit(u: UnitConfig, T: number): UnitBalance {
+  return {
+    cost: u.cost,
+    buildTicks: ticks(u.buildSeconds, T),
+    speed: u.speed,
+    hp: u.hp,
+    radius: u.radius,
+    damage: u.damage,
+    splashRadius: u.splashRadius,
+    range: u.range,
+    fireIntervalTicks: ticks(u.fireIntervalSeconds, T),
+    projectileSpeed: u.projectileSpeed,
+    turnRate: u.turnRate,
+  };
+}
+
+// Every weapon kind and target class, so the resolved modifier table is total.
+// Keep in sync with ProjectileKind (sim/state.ts) and DamageTargetClass.
+const ALL_PROJECTILE_KINDS: readonly ProjectileKind[] = [
+  'gatling',
+  'laser',
+  'rocket',
+  'unitLight',
+  'unitHeavy',
+  'turret',
+];
+const ALL_TARGET_CLASSES: readonly DamageTargetClass[] = ['mech', 'unit', 'turret'];
+
+/** Expand the sparse config table to a full weapon×target grid, defaulting to 1. */
+function resolveDamageModifiers(
+  cfg: DamageModifierConfig
+): Record<ProjectileKind, Record<DamageTargetClass, number>> {
+  const out = {} as Record<ProjectileKind, Record<DamageTargetClass, number>>;
+  for (const kind of ALL_PROJECTILE_KINDS) {
+    out[kind] = { mech: 1, unit: 1, turret: 1 };
+    const over = cfg[kind];
+    if (!over) continue;
+    for (const tc of ALL_TARGET_CLASSES) {
+      const v = over[tc];
+      if (typeof v === 'number') out[kind][tc] = v;
+    }
+  }
+  return out;
+}
+
+/** Turn the human-edited config into a tick-scaled Balance for tick rate `T`. */
+function scaleConfig(c: BalanceConfig, T: number): Balance {
   return {
     tickRate: T,
     mech: {
-      maxHp: 100,
-      radius: 1.1,
-      accel: 55,
-      maxSpeed: 11,
-      friction: 5,
-      hoverAccel: 58,
-      hoverMaxSpeed: 20, // glides noticeably faster than the walker's 11
-      hoverFriction: 2.6, // low drag → drifting/gliding feel
-      respawnTicks: 4 * T,
-      spawnProtectionTicks: 2 * T,
+      maxHp: c.mech.maxHp,
+      radius: c.mech.radius,
+      accel: c.mech.accel,
+      maxSpeed: c.mech.maxSpeed,
+      friction: c.mech.friction,
+      hoverAccel: c.mech.hoverAccel,
+      hoverMaxSpeed: c.mech.hoverMaxSpeed,
+      hoverFriction: c.mech.hoverFriction,
+      respawnTicks: ticks(c.mech.respawnSeconds, T),
+      spawnProtectionTicks: ticks(c.mech.spawnProtectionSeconds, T),
     },
     gatling: {
-      damage: 3,
-      intervalTicks: Math.round(0.1 * T), // 10 shots/s → 30 dps
-      spread: 0.04,
-      projectileSpeed: 70,
-      projectileTtlTicks: 1 * T,
-      heatPerShot: 5.5, // ~18 shots ≈ 1.8 s sustained before overheat
-      coolPerTick: 45 / T,
-      overheatAt: 100,
-      overheatLockTicks: 2 * T,
+      damage: c.gatling.damage,
+      intervalTicks: ticks(c.gatling.fireIntervalSeconds, T),
+      spread: c.gatling.spread,
+      projectileSpeed: c.gatling.projectileSpeed,
+      projectileTtlTicks: ticks(c.gatling.projectileTtlSeconds, T),
+      heatPerShot: c.gatling.heatPerShot,
+      coolPerTick: c.gatling.coolPerSecond / T,
+      overheatAt: c.gatling.overheatAt,
+      overheatLockTicks: ticks(c.gatling.overheatLockSeconds, T),
     },
     laser: {
-      damage: 4, // sole hover weapon (no rockets) → slightly above gatling's 3
-      intervalTicks: Math.round((1 / 7.5) * T), // 7.5 shots/s → 30 dps, same ballpark as the gatling
-      spread: 0, // pinpoint energy bolt
-      projectileSpeed: 120, // beam-fast
-      projectileTtlTicks: Math.round(0.5 * T),
-      heatPerShot: 6.5, // overheats on a similar timescale to the gatling
+      damage: c.laser.damage,
+      intervalTicks: ticks(c.laser.fireIntervalSeconds, T),
+      spread: c.laser.spread,
+      projectileSpeed: c.laser.projectileSpeed,
+      projectileTtlTicks: ticks(c.laser.projectileTtlSeconds, T),
+      heatPerShot: c.laser.heatPerShot,
     },
     rocket: {
-      damage: 45,
-      splashRadius: 4,
-      splashMinFactor: 0.25,
-      projectileSpeed: 26,
-      projectileTtlTicks: 4 * T,
-      cooldownTicks: Math.round(1.5 * T),
-      magazine: 3,
-      reloadTicks: 3 * T,
+      damage: c.rocket.damage,
+      splashRadius: c.rocket.splashRadius,
+      splashMinFactor: c.rocket.splashMinFactor,
+      projectileSpeed: c.rocket.projectileSpeed,
+      projectileTtlTicks: ticks(c.rocket.projectileTtlSeconds, T),
+      cooldownTicks: ticks(c.rocket.cooldownSeconds, T),
+      magazine: c.rocket.magazine,
+      reloadTicks: ticks(c.rocket.reloadSeconds, T),
     },
     economy: {
-      startingCredits: 100,
-      passivePerSecond: 1,
-      perTurretPerSecond: 1,
-      killBounty: { mech: 50, dreadnought: 40, hovertank: 10 },
+      startingCredits: c.economy.startingCredits,
+      passivePerSecond: c.economy.passivePerSecond,
+      perTurretPerSecond: c.economy.perTurretPerSecond,
+      killBounty: { ...c.economy.killBounty },
     },
     units: {
-      hovertank: {
-        cost: 50,
-        buildTicks: 5 * T,
-        speed: 5.5,
-        hp: 80,
-        radius: 0.9,
-        damage: 6,
-        splashRadius: 0,
-        range: 11,
-        fireIntervalTicks: Math.round(0.8 * T),
-        projectileSpeed: 45,
-        turnRate: 3.5, // nimble: swings its gun around quickly
-      },
-      dreadnought: {
-        cost: 400,
-        buildTicks: 15 * T,
-        speed: 2.6,
-        hp: 400,
-        radius: 1.6,
-        damage: 28,
-        splashRadius: 3.5,
-        range: 13,
-        fireIntervalTicks: Math.round(1.6 * T),
-        projectileSpeed: 30,
-        turnRate: 1.6, // body/travel turn rate; its turret aims separately (2x the Tank)
-      },
+      hovertank: scaleUnit(c.units.hovertank, T),
+      dreadnought: scaleUnit(c.units.dreadnought, T),
     },
-    unitCap: 8,
-    queueMax: 3,
+    unitCap: c.unitCap,
+    queueMax: c.queueMax,
     turret: {
-      hp: 300,
-      captureTicks: 3 * T,
-      respawnTicks: 30 * T,
-      range: 17,
-      damage: 8,
-      fireIntervalTicks: Math.round(0.6 * T),
-      projectileSpeed: 55,
-      turnRate: 2.4, // sweeps its head around to track a target
-      radius: 1.3,
-      padRadius: 3.5,
+      hp: c.turret.hp,
+      captureTicks: ticks(c.turret.captureSeconds, T),
+      respawnTicks: ticks(c.turret.respawnSeconds, T),
+      range: c.turret.range,
+      damage: c.turret.damage,
+      fireIntervalTicks: ticks(c.turret.fireIntervalSeconds, T),
+      projectileSpeed: c.turret.projectileSpeed,
+      turnRate: c.turret.turnRate,
+      radius: c.turret.radius,
+      padRadius: c.turret.padRadius,
     },
+    damageModifiers: resolveDamageModifiers(c.damageModifiers),
   };
 }
 
-/**
- * Accelerated preset for tests: cheap, near-instant builds, very fast units,
- * fast captures and respawns, rich economy. Activated per room (client uses
- * ?test=1) or via the BALANCE_PRESET env var on the server.
- */
-function buildTest(T: number): Balance {
-  const base = buildDefault(T);
-  return {
-    ...base,
-    mech: {
-      ...base.mech,
-      respawnTicks: 1 * T,
-      spawnProtectionTicks: 1 * T,
-    },
-    economy: {
-      ...base.economy,
-      startingCredits: 500,
-      passivePerSecond: 10,
-      perTurretPerSecond: 10,
-    },
-    units: {
-      hovertank: {
-        ...base.units.hovertank,
-        buildTicks: Math.round(0.5 * T),
-        speed: 22,
-      },
-      dreadnought: {
-        ...base.units.dreadnought,
-        // Cheaper than the live game's 400 so accelerated tests can queue a few
-        // up front without inflating starting credits (which would overload the
-        // winner's client in the full-match e2e).
-        cost: 200,
-        buildTicks: Math.round(1.5 * T),
-        speed: 12,
-      },
-    },
-    turret: {
-      ...base.turret,
-      captureTicks: 1 * T,
-      respawnTicks: 5 * T,
-    },
-  };
+type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
+};
+
+/** Overlay a sparse set of overrides onto a base config (used for the test preset). */
+function mergeConfig<T>(base: T, over: DeepPartial<T>): T {
+  const out: T = Array.isArray(base) ? ([...(base as unknown[])] as T) : { ...base };
+  for (const key of Object.keys(over) as (keyof T)[]) {
+    const ov = over[key];
+    if (ov === undefined) continue;
+    const bv = base[key];
+    if (
+      bv &&
+      typeof bv === 'object' &&
+      !Array.isArray(bv) &&
+      ov &&
+      typeof ov === 'object' &&
+      !Array.isArray(ov)
+    ) {
+      out[key] = mergeConfig(bv, ov as DeepPartial<typeof bv>);
+    } else {
+      out[key] = ov as T[keyof T];
+    }
+  }
+  return out;
 }
+
+const TEST_BALANCE_CONFIG: BalanceConfig = mergeConfig(BALANCE_CONFIG, TEST_CONFIG_OVERRIDES);
 
 /** Build a preset's balance scaled to `tickRate` ticks per simulated second. */
 export function makeBalance(name: BalancePresetName, tickRate: number = SIM_TICK_RATE): Balance {
-  return name === 'test' ? buildTest(tickRate) : buildDefault(tickRate);
+  return scaleConfig(name === 'test' ? TEST_BALANCE_CONFIG : BALANCE_CONFIG, tickRate);
 }
 
 export const DEFAULT_BALANCE: Balance = makeBalance('default');

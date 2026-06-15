@@ -1,6 +1,7 @@
 export * from './math.js';
 export * from './prng.js';
 export * from './balance.js';
+export * from './balance.config.js';
 export * from './map.js';
 export * from './protocol.js';
 export * from './sim/state.js';

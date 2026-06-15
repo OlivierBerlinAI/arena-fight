@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { TURN, stepTurn } from '../src/game/tuning';
 import type { TurnTune } from '../src/game/tuning';
 
-const T: TurnTune = { accel: 7, friction: 5, max: 2.5, brakeFactor: 1.5 };
+const T: TurnTune = { accel: 7, friction: 5, max: 2.5, brakeFactor: 2 };
 const DT = 0.1;
 
 describe('turn integration', () => {
@@ -32,13 +32,13 @@ describe('turn integration', () => {
     expect(braked).toBeLessThan(plain); // closer to zero / past it sooner
   });
 
-  it('brakes ~50% faster than it builds to the same rate (default 1.5×)', () => {
-    expect(TURN.walker.brakeFactor).toBe(1.5);
-    expect(TURN.hover.brakeFactor).toBe(1.5);
+  it('brakes twice as fast as it builds to the same rate (default 2×)', () => {
+    expect(TURN.walker.brakeFactor).toBe(2);
+    expect(TURN.hover.brakeFactor).toBe(2);
     // Time constant of decay is 1/(friction·brakeFactor) vs spin-up 1/friction.
     const spinUpTau = 1 / T.friction;
     const brakeTau = 1 / (T.friction * T.brakeFactor);
-    expect(spinUpTau / brakeTau).toBeCloseTo(1.5, 9);
+    expect(spinUpTau / brakeTau).toBeCloseTo(2, 9);
   });
 
   it('never exceeds the max turn rate (the cap bounds a high steady state)', () => {

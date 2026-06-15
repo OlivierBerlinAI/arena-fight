@@ -72,12 +72,15 @@ export function stepProjectiles(state: SimState, balance: Balance, events: SimEv
     if (target) {
       const hx = from.x + (to.x - from.x) * bestT;
       const hz = from.z + (to.z - from.z) * bestT;
+      // Each weapon kind can hit each target class for a different fraction of
+      // its base damage (e.g. lasers do less to turrets) — see balance.config.ts.
+      const mod = balance.damageModifiers[proj.kind];
       if (target.kind === 'mech') {
-        damageMech(state, balance, target.player, proj.damage, proj.owner, events);
+        damageMech(state, balance, target.player, proj.damage * mod.mech, proj.owner, events);
       } else if (target.kind === 'unit') {
-        damageUnit(state, balance, target.unit, proj.damage, proj.owner, events, deadUnits);
+        damageUnit(state, balance, target.unit, proj.damage * mod.unit, proj.owner, events, deadUnits);
       } else if (target.kind === 'turret') {
-        damageTurret(state, balance, target.turret, proj.damage, proj.owner, events);
+        damageTurret(state, balance, target.turret, proj.damage * mod.turret, proj.owner, events);
       }
       if (proj.splashRadius > 0) {
         splash(state, balance, { x: hx, z: hz }, proj, events, deadUnits, target);
@@ -115,6 +118,7 @@ function splash(
   const r = proj.splashRadius;
   const r2 = r * r;
   const minFactor = balance.rocket.splashMinFactor;
+  const mod = balance.damageModifiers[proj.kind]; // same weapon×target scaling as direct hits
   const falloff = (d2: number): number => {
     const d = Math.sqrt(d2);
     return Math.max(minFactor, 1 - d / r);
@@ -125,7 +129,7 @@ function splash(
     if (directHit?.kind === 'mech' && directHit.player === mech.player) continue;
     const d2 = distSq(center, mech.pos);
     if (d2 <= r2) {
-      damageMech(state, balance, mech.player, proj.damage * falloff(d2), proj.owner, events);
+      damageMech(state, balance, mech.player, proj.damage * falloff(d2) * mod.mech, proj.owner, events);
     }
   }
   for (const unit of state.units) {
@@ -133,7 +137,7 @@ function splash(
     if (directHit?.kind === 'unit' && directHit.unit.id === unit.id) continue;
     const d2 = distSq(center, unit.pos);
     if (d2 <= r2) {
-      damageUnit(state, balance, unit, proj.damage * falloff(d2), proj.owner, events, deadUnits);
+      damageUnit(state, balance, unit, proj.damage * falloff(d2) * mod.unit, proj.owner, events, deadUnits);
     }
   }
   for (const turret of state.turrets) {
@@ -141,7 +145,7 @@ function splash(
     if (directHit?.kind === 'turret' && directHit.turret.id === turret.id) continue;
     const d2 = distSq(center, turret.pos);
     if (d2 <= r2) {
-      damageTurret(state, balance, turret, proj.damage * falloff(d2), proj.owner, events);
+      damageTurret(state, balance, turret, proj.damage * falloff(d2) * mod.turret, proj.owner, events);
     }
   }
 }
