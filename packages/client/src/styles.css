@@ -1120,14 +1120,20 @@ body.touch-active .mode-hint {
   font-size: 12px;
 }
 
-/* ---------- lobby: play vs AI ---------- */
-.vs-ai-heading {
+/* ---------- lobby: section headings ---------- */
+.lobby-heading {
   color: var(--cyan);
   font-size: 14px;
   letter-spacing: 2px;
   margin: 18px 0 8px;
   padding-top: 14px;
   border-top: 1px solid var(--line);
+}
+/* First heading sits right under the panel head — no extra divider needed. */
+.lobby-heading:first-of-type {
+  margin-top: 8px;
+  padding-top: 0;
+  border-top: none;
 }
 #vs-ai-row {
   align-items: center;
