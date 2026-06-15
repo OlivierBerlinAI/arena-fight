@@ -352,7 +352,7 @@ input[type='text']:focus {
   gap: 4px;
 }
 .event-item {
-  background: rgba(10, 16, 24, 0.85);
+  background: rgba(10, 16, 24, 0.42);
   border: 1px solid var(--line);
   padding: 5px 12px;
   font-size: 13px;
