@@ -26,6 +26,8 @@ export interface GameHook {
   phase: UiPhase;
   tick: number | null;
   ping: number | null;
+  /** server event-loop lag (ms) reported with the latest pong, null if unknown */
+  srvLagMs: number | null;
   credits: number | null;
   snapshotAge: number | null;
   playerIndex: 0 | 1 | null;
@@ -37,6 +39,7 @@ export const gameHook: GameHook = {
   phase: 'name',
   tick: null,
   ping: null,
+  srvLagMs: null,
   credits: null,
   snapshotAge: null,
   playerIndex: null,

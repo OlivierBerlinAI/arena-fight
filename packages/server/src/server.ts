@@ -21,6 +21,7 @@ const DEFAULT_TICK_RATE = 100;
 /** Consecutive missed heartbeat pongs (30 s apart) before a socket is terminated. */
 const HEARTBEAT_MISS_LIMIT = 3;
 import { attachConnection } from './connection';
+import { EventLoopLagMonitor } from './eventLoopLag';
 import { LobbyManager } from './lobby';
 import { createLogger, logLevelFromEnv } from './logger';
 import type { Logger, LogLevel } from './logger';
@@ -87,6 +88,8 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Runnin
   // Tuning overlay is a dev tool: on locally, off in the production image
   // (NODE_ENV=production) unless ALLOW_TUNING is explicitly set.
   const allowTuning = opts.allowTuning ?? envBool('ALLOW_TUNING', process.env.NODE_ENV !== 'production');
+  const lagMonitor = new EventLoopLagMonitor();
+  lagMonitor.start();
   const lobby = new LobbyManager({
     logger,
     tickRate,
@@ -94,6 +97,7 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Runnin
     countdownSecondMs: opts.countdownSecondMs ?? 1000,
     forcedPreset,
     allowTuning,
+    getEventLoopLagMs: () => lagMonitor.currentMs,
   });
 
   const httpServer = http.createServer((req, res) => {
@@ -111,7 +115,12 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Runnin
         return;
       }
       res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify(lobby.debugState()));
+      res.end(
+        JSON.stringify({
+          eventLoopLagMs: { current: Math.round(lagMonitor.currentMs), recentMax: Math.round(lagMonitor.recentMaxMs) },
+          ...lobby.debugState(),
+        })
+      );
       return;
     }
     res.writeHead(404, { 'content-type': 'application/json' });
@@ -186,6 +195,7 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Runnin
       if (closed) return;
       closed = true;
       clearInterval(heartbeat);
+      lagMonitor.stop();
       lobby.closeAll();
       await new Promise<void>((resolve) => wss.close(() => resolve()));
       httpServer.closeAllConnections();

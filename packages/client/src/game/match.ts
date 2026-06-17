@@ -23,6 +23,7 @@ import { GameRenderer } from './renderer';
 import { EntityManager } from './entities';
 import { SnapshotBuffer } from './interpolation';
 import { LocalMechPredictor } from './prediction';
+import { NetDiag, installNetDiag } from './netdiag';
 import { InputManager } from './input';
 import { ChaseCamera } from './camera';
 import { Hud } from './hud';
@@ -57,6 +58,12 @@ export class MatchController {
   private fps = 60;
   private disposed = false;
   private ended = false;
+
+  // --- network diagnostics (Phase 1: observe where ping spikes come from) ---
+  private readonly netDiag = new NetDiag();
+  /** rolling window of recent frame gaps (ms) — long gaps = main-thread stalls */
+  private readonly frameGaps: { at: number; ms: number }[] = [];
+  private lastPongCount = 0;
 
   private readonly musicBtn = byId<HTMLButtonElement>('hud-audio-music');
   private readonly sfxBtn = byId<HTMLButtonElement>('hud-audio-sfx');
@@ -103,6 +110,7 @@ export class MatchController {
 
     gameHook.playerIndex = cfg.playerIndex;
     gameHook.winner = null;
+    installNetDiag(this.netDiag);
 
     this.lastFrame = performance.now();
     const loop = (): void => {
@@ -153,9 +161,11 @@ export class MatchController {
 
   private frame(): void {
     const now = performance.now();
+    const rawFrameMs = now - this.lastFrame;
     const dt = Math.min(0.1, (now - this.lastFrame) / 1000);
     this.lastFrame = now;
     if (dt > 0) this.fps = this.fps * 0.9 + (1 / dt) * 0.1;
+    this.trackNetDiag(now, rawFrameMs);
 
     const view = this.buffer.sample(now);
     const latest = this.buffer.latest;
@@ -200,9 +210,16 @@ export class MatchController {
       this.minimap.draw(latest, this.chase.groundYaw);
 
       gameHook.snapshotAge = this.buffer.snapshotAge(now);
+      let frameMax = 0;
+      for (const g of this.frameGaps) if (g.ms > frameMax) frameMax = g.ms;
       this.debug.update({
         fps: this.fps,
         ping: this.net.rtt,
+        pingMedian: this.netDiag.median(),
+        pingJitterMs: this.netDiag.jitterMs(),
+        serverLagMs: this.net.serverLagMs,
+        maxFrameMs: frameMax,
+        renderDelayMs: this.buffer.renderDelayMs,
         serverTick: latest.tick,
         renderTick: view.renderTick,
         snapshotAgeMs: gameHook.snapshotAge,
@@ -227,6 +244,24 @@ export class MatchController {
     // ?norender (e2e): skip the WebGL draw — the loop above still updates the
     // sim view, HUD and __game, which is all the tests assert.
     if (!this.noRender) this.renderer.render();
+  }
+
+  /** Record this frame's gap and, when a new pong arrived, attribute any spike. */
+  private trackNetDiag(now: number, frameMs: number): void {
+    this.frameGaps.push({ at: now, ms: frameMs });
+    // Keep a touch longer than the ping interval so the pong that lands just
+    // after a stall still sees it.
+    while (this.frameGaps.length > 0 && now - this.frameGaps[0].at > 600) this.frameGaps.shift();
+
+    if (this.net.pongCount === this.lastPongCount || !this.net.lastSample) return;
+    this.lastPongCount = this.net.pongCount;
+    let frameMax = 0;
+    for (const g of this.frameGaps) if (g.ms > frameMax) frameMax = g.ms;
+    this.netDiag.record(this.net.lastSample, {
+      frameMaxMs: frameMax,
+      snapshotAgeMs: this.buffer.snapshotAge(now),
+      renderDelayMs: this.buffer.renderDelayMs,
+    });
   }
 
   private updateAudioButtons(): void {

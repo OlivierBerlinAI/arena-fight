@@ -32,6 +32,8 @@ export interface LobbyOptions {
   forcedPreset?: BalancePresetName | undefined;
   /** allow the debug tuning overlay's tuneMech messages (dev only) */
   allowTuning: boolean;
+  /** current event-loop lag in ms, stamped into pongs for client diagnostics */
+  getEventLoopLagMs?: () => number;
 }
 
 export class LobbyManager {
@@ -41,6 +43,7 @@ export class LobbyManager {
   private readonly countdownSecondMs: number;
   private readonly forcedPreset: BalancePresetName | undefined;
   private readonly allowTuning: boolean;
+  private readonly getEventLoopLagMs: () => number;
   /** ws:// the bot workers dial back into; set once the server is listening. */
   private botConnectUrl: string | null = null;
   /** live bot worker threads, keyed by their room id, so we can stop them. */
@@ -55,6 +58,7 @@ export class LobbyManager {
     this.countdownSecondMs = opts.countdownSecondMs;
     this.forcedPreset = opts.forcedPreset;
     this.allowTuning = opts.allowTuning;
+    this.getEventLoopLagMs = opts.getEventLoopLagMs ?? (() => 0);
   }
 
   // -------------------------------------------------------------------------
@@ -94,7 +98,7 @@ export class LobbyManager {
         return;
       }
       case 'ping':
-        send(client, { type: 'pong', t: msg.t });
+        send(client, { type: 'pong', t: msg.t, srvLagMs: Math.round(this.getEventLoopLagMs()) });
         return;
       case 'createRoom': {
         if (client.roomId !== null) {

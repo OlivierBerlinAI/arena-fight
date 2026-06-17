@@ -4,6 +4,16 @@ import { byId } from '../dom';
 export interface DebugInfo {
   fps: number;
   ping: number | null;
+  /** rolling median RTT (ms) — the spike baseline */
+  pingMedian: number;
+  /** worst recent RTT above the median (ms) */
+  pingJitterMs: number;
+  /** server event-loop lag (ms) from the latest pong */
+  serverLagMs: number | null;
+  /** worst client frame gap (ms) in the recent window — main-thread stalls */
+  maxFrameMs: number;
+  /** adaptive interpolation render delay (ms) — rises when snapshots get bursty */
+  renderDelayMs: number;
   serverTick: number | null;
   renderTick: number | null;
   snapshotAgeMs: number | null;
@@ -33,7 +43,10 @@ export class DebugOverlay {
     const fmt = (v: number): string => v.toFixed(1);
     this.root.textContent = [
       `fps        ${info.fps.toFixed(0)}`,
-      `ping       ${info.ping === null ? '--' : `${info.ping}ms`}`,
+      `ping       ${info.ping === null ? '--' : `${info.ping}ms`} (med ${info.pingMedian.toFixed(0)} jit ${info.pingJitterMs.toFixed(0)})`,
+      `srv lag    ${info.serverLagMs === null ? '--' : `${info.serverLagMs}ms`}`,
+      `frame max  ${info.maxFrameMs.toFixed(0)}ms`,
+      `rdr delay  ${info.renderDelayMs.toFixed(0)}ms`,
       `srv tick   ${info.serverTick ?? '--'}`,
       `rnd tick   ${info.renderTick === null ? '--' : info.renderTick.toFixed(1)}`,
       `snap age   ${info.snapshotAgeMs === null ? '--' : `${info.snapshotAgeMs.toFixed(0)}ms`}`,

@@ -194,7 +194,12 @@ export type ServerMessage =
       stats: [PlayerStats, PlayerStats];
     }
   | { type: 'error'; code: ServerErrorCode; message: string }
-  | { type: 'pong'; t: number };
+  /**
+   * `t` echoes the client's ping timestamp (RTT). `srvLagMs` carries the
+   * server's current event-loop lag so the client can attribute an RTT spike
+   * to the server loop vs. the network vs. its own main thread.
+   */
+  | { type: 'pong'; t: number; srvLagMs?: number };
 
 // ---------------------------------------------------------------------------
 // Validation — the server never trusts a client message.

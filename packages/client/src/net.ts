@@ -4,7 +4,20 @@
  */
 import type { ClientMessage, ServerMessage } from '@mech-arena-fight/shared';
 
-const PING_INTERVAL_MS = 2000;
+// 500 ms (2 Hz) gives enough temporal resolution to actually catch RTT spikes
+// and keeps the prediction's latency estimate fresh; a ping/pong is ~40 bytes,
+// so the bandwidth cost is negligible.
+const PING_INTERVAL_MS = 500;
+
+/** One RTT measurement plus the server-reported event-loop lag at that moment. */
+export interface RttSample {
+  /** performance.now() when the pong was processed */
+  at: number;
+  /** round-trip time in ms */
+  rtt: number;
+  /** server event-loop lag in ms at pong time, or null if the server didn't report it */
+  srvLagMs: number | null;
+}
 
 /** ws://host:8080 by default; override with ?server=host:port. */
 export function serverUrl(): string {
@@ -39,12 +52,18 @@ export class Net {
 
   /** latest measured round-trip time in ms, null before the first pong */
   rtt: number | null = null;
+  /** server event-loop lag (ms) reported with the latest pong, null if unknown */
+  serverLagMs: number | null = null;
+  /** monotonically increasing pong counter, so consumers can detect a fresh sample */
+  pongCount = 0;
+  /** the latest RTT measurement bundled with its server-lag reading */
+  lastSample: RttSample | null = null;
 
   onOpen: (() => void) | null = null;
   onMessage: ((msg: ServerMessage) => void) | null = null;
   /** fired once when the connection drops or fails */
   onClose: ((reason: string) => void) | null = null;
-  onRtt: ((rtt: number) => void) | null = null;
+  onRtt: ((sample: RttSample) => void) | null = null;
 
   get connected(): boolean {
     return this.socket !== null && this.socket.readyState === WebSocket.OPEN;
@@ -85,8 +104,12 @@ export class Net {
       }
       const msg = parsed as ServerMessage;
       if (msg.type === 'pong') {
-        this.rtt = Math.max(0, Math.round(performance.now() - msg.t));
-        this.onRtt?.(this.rtt);
+        const now = performance.now();
+        this.rtt = Math.max(0, Math.round(now - msg.t));
+        this.serverLagMs = typeof msg.srvLagMs === 'number' ? msg.srvLagMs : null;
+        this.pongCount += 1;
+        this.lastSample = { at: now, rtt: this.rtt, srvLagMs: this.serverLagMs };
+        this.onRtt?.(this.lastSample);
         return;
       }
       if (msg.type === 'error') {

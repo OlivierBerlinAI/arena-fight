@@ -285,8 +285,9 @@ class App {
       this.helloSent = true;
     };
     this.net.onMessage = (msg) => this.handleMessage(msg);
-    this.net.onRtt = (rtt) => {
-      gameHook.ping = rtt;
+    this.net.onRtt = (sample) => {
+      gameHook.ping = sample.rtt;
+      gameHook.srvLagMs = sample.srvLagMs;
     };
     this.net.onClose = (reason) => this.handleDisconnect(reason);
     this.net.connect(serverUrl());
@@ -296,6 +297,7 @@ class App {
     this.destroyMatch();
     resetMatchHook();
     gameHook.ping = null;
+    gameHook.srvLagMs = null;
     this.lastRoom = null;
     this.setPhase('name');
     this.nameScreen.setStatus('');
