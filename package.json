@@ -12,6 +12,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "simulate": "tsx packages/server/scripts/simulate.ts",
+    "loadprobe": "tsx packages/server/scripts/loadprobe.ts",
     "typecheck": "npm run typecheck --workspaces && tsc --noEmit -p tsconfig.json"
   },
   "devDependencies": {
