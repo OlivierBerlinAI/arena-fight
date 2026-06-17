@@ -48,6 +48,8 @@ export interface DiagSample {
 
 /** how many recent samples define the baseline / are kept for export */
 const WINDOW = 240;
+/** how many recent samples define the "stable" RTT fed to the predictor */
+const STABLE_WINDOW = 16;
 /** a sample counts as a spike when it exceeds the median by both of these */
 const SPIKE_ABS_MS = 40;
 const SPIKE_REL = 1.8;
@@ -116,6 +118,21 @@ export class NetDiag {
     const sorted = [...this.rtts].sort((a, b) => a - b);
     const mid = sorted.length >> 1;
     return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  }
+
+  /**
+   * Spike-resistant RTT for client-side prediction: the median of the most
+   * recent samples. Feeding the raw latest RTT into the predictor's look-ahead
+   * makes the local mech lurch forward and rubber-band back on every transport
+   * spike; the median rejects those while still tracking a genuine baseline
+   * shift within a few seconds.
+   */
+  stableRttMs(): number {
+    const n = this.rtts.length;
+    if (n === 0) return 0;
+    const recent = this.rtts.slice(Math.max(0, n - STABLE_WINDOW)).sort((a, b) => a - b);
+    const mid = recent.length >> 1;
+    return recent.length % 2 ? recent[mid] : (recent[mid - 1] + recent[mid]) / 2;
   }
 
   /** Jitter = how far the worst recent RTT sits above the median (p100 − median). */

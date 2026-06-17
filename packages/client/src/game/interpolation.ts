@@ -8,11 +8,25 @@
  * remote motion and grows automatically when snapshot arrivals get bursty, so a
  * network hiccup does not starve the interpolator. The local player's own mech
  * bypasses this buffer entirely via client-side prediction (see prediction.ts).
+ *
+ * When a snapshot arrives later than the render delay can absorb (a transport
+ * spike beyond the adaptive ceiling), the renderer briefly EXTRAPOLATES remote
+ * entities along their last-known trend instead of freezing them, bounded to
+ * MAX_EXTRAP_MS so a real stall holds the last pose rather than flinging
+ * entities across the map. On resume the snapshot supersedes the extrapolation.
  */
 import type { MechSnap, ProjectileSnap, Snapshot, TurretSnap, UnitSnap } from '@mech-arena-fight/shared';
 
 export const MIN_RENDER_DELAY_MS = 55;
 export const MAX_RENDER_DELAY_MS = 140;
+/**
+ * How far past the freshest snapshot remote entities may be extrapolated when
+ * snapshots stall. Covers the brief overshoot of a transport spike beyond the
+ * adaptive render delay (the observed spikes reach ~250 ms; render delay caps
+ * at 140 ms, so ~120 ms of extrapolation bridges the rest) without letting a
+ * genuine stall fling entities away.
+ */
+export const MAX_EXTRAP_MS = 120;
 const MAX_BUFFER = 90;
 /** how many recent snapshot inter-arrival gaps drive the jitter estimate */
 const JITTER_WINDOW = 24;
@@ -101,7 +115,10 @@ export class SnapshotBuffer {
     const serverTickEstimate = newest.snap.tick + (nowMs - newest.arrivedAt) / this.tickMs;
     const rt = serverTickEstimate - this.delayMs / Math.max(1, this.tickMs);
     const oldest = this.buf[0].snap.tick;
-    return Math.min(Math.max(rt, oldest), newest.snap.tick);
+    // Allow rt to run a bounded distance past the freshest snapshot so a stalled
+    // link extrapolates briefly instead of freezing (see sample()).
+    const maxExtrapTicks = MAX_EXTRAP_MS / Math.max(1, this.tickMs);
+    return Math.min(Math.max(rt, oldest), newest.snap.tick + maxExtrapTicks);
   }
 
   sample(nowMs: number): ViewState | null {
@@ -120,7 +137,11 @@ export class SnapshotBuffer {
     const s0 = this.buf[i0].snap;
     const s1 = this.buf[i1].snap;
     const span = s1.tick - s0.tick;
-    const t = span > 0 ? Math.min(1, Math.max(0, (rt - s0.tick) / span)) : 1;
+    // t > 1 means rt has run past the freshest snapshot: extrapolate along the
+    // s0→s1 trend, bounded so a real stall holds rather than flings entities.
+    const maxExtrapTicks = MAX_EXTRAP_MS / Math.max(1, this.tickMs);
+    const tMax = span > 0 ? 1 + maxExtrapTicks / span : 1;
+    const t = span > 0 ? Math.max(0, Math.min(tMax, (rt - s0.tick) / span)) : 1;
 
     // Drop snapshots that are no longer needed (older than s0).
     if (i0 > 0) this.buf.splice(0, i0);
@@ -160,7 +181,8 @@ export class SnapshotBuffer {
         return {
           ...t1,
           headYaw: lerpAngle(t0.headYaw, t1.headYaw, t),
-          capProgress: lerp(t0.capProgress, t1.capProgress, t),
+          // capProgress is a 0..1 ring fraction; extrapolation (t>1) can overshoot.
+          capProgress: Math.min(1, Math.max(0, lerp(t0.capProgress, t1.capProgress, t))),
         };
       }),
       projectiles: s1.projectiles.map((p1) => {

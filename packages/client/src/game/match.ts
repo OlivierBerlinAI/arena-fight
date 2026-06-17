@@ -183,7 +183,10 @@ export class MatchController {
           ? { x: this.predictor.x, z: this.predictor.z }
           : { x: mechSnap.x, z: mechSnap.z };
         this.input.update({ x: aim.x, z: aim.z, yaw: mechSnap.yaw, alive: mechSnap.alive }, dt);
-        const aheadMs = (this.buffer.snapshotAge(now) ?? 0) + (this.net.rtt ?? 0) / 2;
+        // Use a spike-resistant RTT (median of recent samples) for the look-ahead
+        // so a transport ping spike doesn't whip the local mech forward and back.
+        const stableRtt = this.netDiag.stableRttMs() || (this.net.rtt ?? 0);
+        const aheadMs = (this.buffer.snapshotAge(now) ?? 0) + stableRtt / 2;
         const myMech = this.predictor.update(
           mechSnap,
           latest.turrets,
@@ -248,6 +251,10 @@ export class MatchController {
 
   /** Record this frame's gap and, when a new pong arrived, attribute any spike. */
   private trackNetDiag(now: number, frameMs: number): void {
+    // After the match ends the server stops sending snapshots while pings keep
+    // flowing, so snapshotAge climbs forever — recording past that point only
+    // produces misleading "spikes" with stale context.
+    if (this.ended) return;
     this.frameGaps.push({ at: now, ms: frameMs });
     // Keep a touch longer than the ping interval so the pong that lands just
     // after a stall still sees it.
