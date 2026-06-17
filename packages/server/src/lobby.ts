@@ -46,8 +46,8 @@ export class LobbyManager {
   private readonly getEventLoopLagMs: () => number;
   /** ws:// the bot workers dial back into; set once the server is listening. */
   private botConnectUrl: string | null = null;
-  /** live bot worker threads, keyed by their room id, so we can stop them. */
-  private readonly botWorkers = new Map<string, Worker>();
+  /** live bot worker threads per room (1 for vs-AI, 2 for AI-vs-AI), so we can stop them. */
+  private readonly botWorkers = new Map<string, Worker[]>();
   private readonly clients = new Map<string, ClientConn>();
   private readonly rooms = new Map<string, Room>();
 
@@ -148,13 +148,7 @@ export class LobbyManager {
         this.rooms.set(room.id, room);
         room.addClient(client);
         room.setReady(client, true); // human is auto-readied; the bot readies on join
-        const name = `AI (${msg.difficulty})`;
-        const worker = new Worker(new URL('./bot/worker.ts', import.meta.url), {
-          workerData: { url: this.botConnectUrl, roomId: room.id, name, difficulty: msg.difficulty },
-        });
-        worker.on('error', (e) => this.logger.error('bot worker error', { error: e.message }));
-        worker.on('exit', () => this.botWorkers.delete(room.id));
-        this.botWorkers.set(room.id, worker);
+        this.spawnBot(room.id, `AI (${msg.difficulty})`, msg.difficulty);
         this.logger.info('vs-AI match created', { roomId: room.id, difficulty: msg.difficulty });
         return;
       }
@@ -256,9 +250,60 @@ export class LobbyManager {
     this.botConnectUrl = url;
   }
 
+  /** Spawn one AI worker that dials in and joins the given room. */
+  private spawnBot(roomId: string, name: string, difficulty: BotDifficulty): void {
+    if (this.botConnectUrl === null) return;
+    const worker = new Worker(new URL('./bot/worker.ts', import.meta.url), {
+      workerData: { url: this.botConnectUrl, roomId, name, difficulty },
+    });
+    worker.on('error', (e) => this.logger.error('bot worker error', { error: e.message }));
+    worker.on('exit', () => {
+      const list = this.botWorkers.get(roomId);
+      if (!list) return;
+      const i = list.indexOf(worker);
+      if (i !== -1) list.splice(i, 1);
+      if (list.length === 0) this.botWorkers.delete(roomId);
+    });
+    const list = this.botWorkers.get(roomId);
+    if (list) list.push(worker);
+    else this.botWorkers.set(roomId, [worker]);
+  }
+
+  /**
+   * Start a headless AI-vs-AI match in a fresh private room: two AI workers
+   * dial in, join, ready up and fight each other with the real opponent AI.
+   * Used by the `botmatch` load/responsiveness harness. Returns the room id, or
+   * null if bots are unavailable (server not yet listening).
+   */
+  createBotMatch(difficulty: BotDifficulty = 'normal'): string | null {
+    if (this.botConnectUrl === null) return null;
+    const preset = this.forcedPreset ?? 'default';
+    const room = new Room({
+      id: this.newRoomId(),
+      name: `AI-vs-AI (${difficulty})`,
+      preset,
+      tickRate: this.tickRate,
+      tickMs: this.tickMs,
+      countdownSecondMs: this.countdownSecondMs,
+      logger: this.logger,
+      onRoomsChanged: () => this.broadcastLobby(),
+      onEmpty: (r) => this.removeRoom(r),
+    });
+    this.rooms.set(room.id, room);
+    this.spawnBot(room.id, `AI-A (${difficulty})`, difficulty);
+    this.spawnBot(room.id, `AI-B (${difficulty})`, difficulty);
+    this.logger.info('AI-vs-AI match created', { roomId: room.id, difficulty });
+    return room.id;
+  }
+
+  /** Number of live rooms — lets the harness keep N bot matches running. */
+  roomCount(): number {
+    return this.rooms.size;
+  }
+
   private removeRoom(room: Room): void {
     this.rooms.delete(room.id);
-    this.botWorkers.get(room.id)?.postMessage('stop'); // stop its AI worker, if any
+    for (const w of this.botWorkers.get(room.id) ?? []) w.postMessage('stop'); // stop its AI worker(s)
     room.dispose();
     this.logger.info('room removed', { roomId: room.id, name: room.name });
     this.broadcastLobby();
@@ -296,7 +341,7 @@ export class LobbyManager {
 
   /** Tear everything down: all room timers cleared, all sockets terminated. */
   closeAll(): void {
-    for (const w of this.botWorkers.values()) void w.terminate();
+    for (const list of this.botWorkers.values()) for (const w of list) void w.terminate();
     this.botWorkers.clear();
     for (const room of this.rooms.values()) room.dispose();
     this.rooms.clear();
