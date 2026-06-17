@@ -143,6 +143,18 @@ export class NetDiag {
     return Math.max(0, worst - this.median());
   }
 
+  /**
+   * Lightweight points for the F3 latency graph: one per pong since `sinceAt`,
+   * oldest→newest, with a flag for samples that were classified as a spike.
+   */
+  latencyPoints(sinceAt: number): { at: number; rtt: number; spike: boolean }[] {
+    const out: { at: number; rtt: number; spike: boolean }[] = [];
+    for (const s of this.ring) {
+      if (s.at >= sinceAt) out.push({ at: s.at, rtt: s.rtt, spike: s.spike !== null });
+    }
+    return out;
+  }
+
   /** Snapshot of the full ring + summary for console export. */
   dump(): { median: number; jitter: number; spikeCounts: SpikeCounts; samples: DiagSample[] } {
     return {

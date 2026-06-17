@@ -604,11 +604,23 @@ input[type='text']:focus {
   font-size: 11px;
   line-height: 1.5;
   padding: 8px 10px;
-  white-space: pre;
   z-index: 30;
 }
 #debug-overlay.visible {
   display: block;
+}
+#debug-text {
+  margin: 0;
+  white-space: pre;
+  font: inherit;
+  color: inherit;
+}
+#debug-graph {
+  display: block;
+  width: 240px;
+  height: 64px;
+  margin-top: 6px;
+  border: 1px solid var(--line);
 }
 
 /* result screen */

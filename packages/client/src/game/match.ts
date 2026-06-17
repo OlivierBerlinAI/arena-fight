@@ -32,6 +32,9 @@ import { DebugOverlay } from './debug';
 import { SoundEngine } from './audio';
 import { byId } from '../dom';
 
+/** Trailing window the F3 latency graph shows before points scroll off (ms). */
+const LATENCY_GRAPH_MS = 30_000;
+
 export interface MatchConfig {
   seed: number;
   playerIndex: PlayerIndex;
@@ -242,6 +245,12 @@ export class MatchController {
           : null,
         credits: player?.credits ?? null,
       });
+    }
+
+    // Scrolling latency graph (only built when the overlay is open). Drawn
+    // outside the view gate so it keeps scrolling even before the first snapshot.
+    if (this.debug.isVisible) {
+      this.debug.drawLatency(this.netDiag.latencyPoints(now - LATENCY_GRAPH_MS), now, LATENCY_GRAPH_MS);
     }
 
     // ?norender (e2e): skip the WebGL draw — the loop above still updates the
