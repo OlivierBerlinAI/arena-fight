@@ -143,6 +143,14 @@ export async function startServer(opts: StartServerOptions = {}): Promise<Runnin
     attachConnection(lobby, ws);
   });
 
+  // Disable Nagle on every TCP connection. This app sends frequent small frames
+  // (50 Hz snapshots, pings); Nagle's coalescing waits for ACKs before sending
+  // the next small write, which on a WAN link bunches the snapshot stream into
+  // bursts (measured: 60–220 ms gaps) and adds latency. Flush each frame at
+  // once. The socket is shared by the HTTP server and the WS upgrade, so setting
+  // it here covers WebSocket traffic too.
+  httpServer.on('connection', (socket) => socket.setNoDelay(true));
+
   // Heartbeat: terminate sockets that stop answering pings, so dead/half-open
   // connections don't pile up on an internet-facing server.
   //
